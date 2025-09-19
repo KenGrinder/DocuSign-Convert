@@ -70,15 +70,16 @@ This project is designed to work with GitHub Pages for free hosting:
 
 ## Supported Features
 
-- **Tab Types**: Text fields, SignHere, InitialHere, DateSigned (currently converts to text fields)
+- **Tab Types**: Text fields, SignHere, InitialHere, DateSigned (currently converts to text fields), Checkbox fields
 - **Coordinates**: DocuSign uses top-left origin with pixel-like units; this tool converts to PDF user space using each page's size
 - **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and other unwanted content
 - **Document Exclusion**: Skip specific documents during conversion
 - **Multi-page Support**: Handle multiple documents and pages seamlessly
+- **Interactive Checkboxes**: Convert DocuSign checkbox tabs to interactive PDF checkbox fields
 
 ## Limitations
 
-- **Field Types**: Currently only supports text and signature fields. AcroForm supports additional types (checkboxes, radio buttons, dropdowns, list boxes) that are not yet implemented
+- **Field Types**: Currently supports text, signature, and checkbox fields. AcroForm supports additional types (radio buttons, dropdowns, list boxes) that are not yet implemented
 - **Advanced Features**: Conditional logic, formulas, and complex styling are not fully implemented
 - **Client-side Processing**: Large files may take longer to process in the browser
 - **Radio Groups**: DocuSign RadioGroup tabs are converted to text fields (not interactive radio buttons)

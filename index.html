@@ -8,6 +8,18 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Load signature libraries for real signature field support -->
+    <script type="module" id="signature-libs">
+        // Import signature libraries for real signature field functionality
+        import { PdfDigitalSigner } from "https://esm.sh/sign-pdf-lib@2.0.3?bundle&deps=pdf-lib@1.17.1,node-forge@1.3.1";
+        import { pdflibAddPlaceholder } from "https://esm.sh/@signpdf/placeholder-pdf-lib@3.2.6";
+        
+        // Make signature libraries globally available for the converter
+        window.PdfDigitalSigner = PdfDigitalSigner;
+        window.pdflibAddPlaceholder = pdflibAddPlaceholder;
+        
+        console.log('Real signature field libraries loaded successfully');
+    </script>
     <style>
         .hero-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -80,8 +92,8 @@
                         DocuSign JSON to PDF Converter
                     </h1>
                     <p class="lead mb-4">
-                        Convert your DocuSign template JSON files into clean, fillable PDFs with Adobe AcroForm fields.
-                        Currently supports text and signature fields - perfect for creating reusable forms from DocuSign templates.
+                        Convert your DocuSign template JSON files into clean, fillable PDFs with proper Adobe AcroForm field types.
+                        Automatically maps DocuSign fields to appropriate PDF field types including digital signatures, date fields, text fields, and checkboxes.
                     </p>
                     <div class="alert alert-info d-inline-block">
                         <i class="bi bi-info-circle me-2"></i>
@@ -106,6 +118,14 @@
                         
                         <!-- Alert Messages -->
                         <div id="alertContainer"></div>
+                        
+                        <!-- Real Signature Fields Notification -->
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="bi bi-patch-check-fill me-2"></i>
+                            <strong>New Feature:</strong> Real Signature Fields! This converter now creates actual clickable signature fields that Adobe Acrobat/Reader recognizes. 
+                            Users can sign documents digitally using their certificates or draw signatures directly in PDF viewers.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
 
                         <form id="uploadForm">
                             <!-- File Upload Area -->
@@ -229,53 +249,63 @@
                            </label>
                            <div class="form-text">Include system-generated tabs (uncheck to filter out unwanted fields)</div>
                        </div>
-               </div>
-               <div class="col-md-6">
-                   <div class="form-check">
-                       <input class="form-check-input" type="checkbox" id="debug_mode">
-                       <label class="form-check-label" for="debug_mode">
-                           <i class="bi bi-bug me-1"></i>
-                           Debug Mode
-                       </label>
-                       <div class="form-text">Show detailed conversion information in console</div>
-                   </div>
-               </div>
+                                    </div>
+                                    <div class="col-md-6">
+                       <div class="form-check">
+                           <input class="form-check-input" type="checkbox" id="show_field_type_controls" checked>
+                           <label class="form-check-label" for="show_field_type_controls">
+                               <i class="bi bi-toggle-on me-1"></i>
+                               Show Field Type Controls
+                           </label>
+                           <div class="form-text">Show advanced field type translation settings</div>
+                       </div>
+                                    </div>
+                                </div>
+
+                                <div id="field-type-controls-section" class="mt-3" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0"><i class="bi bi-translate me-2"></i>Field Type Translation Settings</h6>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button type="button" class="btn btn-outline-primary" id="enableAllFields">
+                                                        <i class="bi bi-check-all me-1"></i>Enable All
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary" id="disableAllFields">
+                                                        <i class="bi bi-x-square me-1"></i>Disable All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="text-muted small mb-3">Enable/disable specific DocuSign field types for translation to PDF. Disabled field types will be skipped during conversion.</p>
+                                            <div class="alert alert-info mb-3" id="field-status-alert" style="display: none;">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                <span id="field-status-text"></span>
+                                            </div>
+                                            <div id="field-type-controls" class="row">
+                                                <!-- Field type controls will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
            </div>
 
-                                    <!-- Signature Field Options -->
+                                    <!-- Field Type Information -->
                                     <div class="mt-4">
                                         <h6 class="mb-3">
-                                            <i class="bi bi-pen me-2"></i>
-                                            Signature Field Options
-                                        </h6>
-                                        <div class="alert alert-info mb-3">
                                             <i class="bi bi-info-circle me-2"></i>
-                                            <strong>Note:</strong> Choose how DocuSign signature and initial fields are converted. 
-                                            Interactive signature fields allow digital signatures in PDF viewers, while text placeholders 
-                                            show "[Signature]" text for manual signing.
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="include_signature_fields" checked>
-                                                    <label class="form-check-label" for="include_signature_fields">
-                                                        <i class="bi bi-pen me-1"></i>
-                                                        Include Signature Fields
-                                                    </label>
-                                                    <div class="form-text">Convert DocuSign signature/initial fields to PDF fields (uncheck to skip entirely)</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="signature_as_text" checked>
-                                                    <label class="form-check-label" for="signature_as_text">
-                                                        <i class="bi bi-type me-1"></i>
-                                                        Use Text Placeholder
-                                                    </label>
-                                                    <div class="form-text">Show "[Signature]" text instead of interactive signature field</div>
-                                                </div>
-                                            </div>
+                                            Field Type Conversion
+                                        </h6>
+                                        <div class="alert alert-success mb-3">
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            <strong>Automatic Field Mapping:</strong> DocuSign fields are automatically converted to proper PDF AcroForm field types:
+                                            <ul class="mb-0 mt-2">
+                                                <li><strong>Signature/Initial fields</strong> → PDF Digital Signature fields</li>
+                                                <li><strong>Date fields</strong> → PDF Date input fields with format validation</li>
+                                                <li><strong>Text fields</strong> → PDF Text input fields</li>
+                                                <li><strong>Checkbox fields</strong> → PDF Checkbox fields</li>
+                                            </ul>
                                         </div>
                                     </div>
                                     </div> <!-- End collapse -->
@@ -353,6 +383,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/field-translators.js"></script>
     <script src="js/converter.js"></script>
     <script>
         // File upload handling
@@ -471,11 +502,9 @@
                     fieldWidth: parseFloat(document.getElementById('field_width').value) || 120,
                     fieldHeight: parseFloat(document.getElementById('field_height').value) || 20,
                     showFieldNames: document.getElementById('show_field_names').checked,
-                    includeSystemTabs: document.getElementById('include_system_tabs').checked,
-                    debugMode: document.getElementById('debug_mode').checked,
-                    // Signature field options
-                    includeSignatureFields: document.getElementById('include_signature_fields').checked,
-                    signatureAsText: document.getElementById('signature_as_text').checked
+                    includeSystemTabs: document.getElementById('include_system_tabs').checked
+                    // Note: Signature and date fields are now always created as proper AcroForm field types
+                    // No additional options needed for field type conversion
                 };
 
                 const pdfBytes = await convertDocuSignToPDF(jsonData, options);
@@ -501,6 +530,150 @@
                 loading.style.display = 'none';
             }
         });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize field type controls
+            initializeFieldTypeControls();
+            
+            // Set up field type controls toggle
+            document.getElementById('show_field_type_controls').addEventListener('change', function() {
+                const section = document.getElementById('field-type-controls-section');
+                section.style.display = this.checked ? 'block' : 'none';
+            });
+            
+            // Show the controls by default if checked
+            if (document.getElementById('show_field_type_controls').checked) {
+                document.getElementById('field-type-controls-section').style.display = 'block';
+            }
+        });
+
+        /**
+         * Initialize field type controls based on available translators
+         */
+        function initializeFieldTypeControls() {
+            const container = document.getElementById('field-type-controls');
+            container.innerHTML = '';
+            
+            // Get field type configurations from the field-translators.js module
+            // Use the actual field types if available, otherwise fall back to hardcoded list
+            let fieldTypes = {};
+            if (typeof getAllFieldTypeConfigs === 'function') {
+                const configs = getAllFieldTypeConfigs();
+                fieldTypes = Object.fromEntries(
+                    Object.entries(configs).map(([key, config]) => [key, { 
+                        name: config.name, 
+                        description: config.description,
+                        enabled: config.enabled 
+                    }])
+                );
+            } else {
+                // Fallback configuration if functions aren't loaded yet
+                fieldTypes = {
+                    'textTabs': { name: 'Text Fields', description: 'Single-line text input fields', enabled: true },
+                    'signHereTabs': { name: 'Signature Fields', description: 'Adobe Fill & Sign signature fields', enabled: true },
+                    'initialHereTabs': { name: 'Initial Fields', description: 'Adobe Fill & Sign fields for initials', enabled: true },
+                    'checkboxTabs': { name: 'Checkbox Fields', description: 'Checkbox form controls', enabled: true },
+                    'radioGroupTabs': { name: 'Radio Button Groups', description: 'Radio button groups', enabled: true },
+                    'listTabs': { name: 'Dropdown Lists', description: 'Dropdown/combo box selections', enabled: true },
+                    'fullNameTabs': { name: 'Full Name Fields', description: 'Auto-populated full name fields', enabled: true },
+                    'dateSignedTabs': { name: 'Date Signed Fields', description: 'Auto-populated date fields', enabled: true },
+                    'companyTabs': { name: 'Company Fields', description: 'Auto-populated company fields', enabled: true },
+                    'titleTabs': { name: 'Title Fields', description: 'Auto-populated job title fields', enabled: true },
+                    'emailAddressTabs': { name: 'Email Address Fields', description: 'Auto-populated email fields', enabled: true },
+                    'numericalTabs': { name: 'Numerical Fields', description: 'Numeric input fields with validation', enabled: true },
+                    'signerAttachmentTabs': { name: 'File Attachment Fields', description: 'File attachment fields for document uploads', enabled: true }
+                };
+            }
+            
+            Object.entries(fieldTypes).forEach(([fieldType, config]) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 mb-3';
+                
+                col.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input field-type-toggle" type="checkbox" id="${fieldType}" 
+                               ${config.enabled ? 'checked' : ''} data-field-type="${fieldType}">
+                        <label class="form-check-label" for="${fieldType}">
+                            <strong>${config.name}</strong>
+                            <br><small class="text-muted">${config.description}</small>
+                        </label>
+                    </div>
+                `;
+                
+                container.appendChild(col);
+            });
+            
+            // Add event listeners for field type toggles
+            document.querySelectorAll('.field-type-toggle').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const fieldType = this.dataset.fieldType;
+                    const enabled = this.checked;
+                    
+                    // Update the field translator system
+                    if (typeof setFieldTypeEnabled === 'function') {
+                        setFieldTypeEnabled(fieldType, enabled);
+                        updateFieldStatusDisplay();
+                    }
+                    
+                    console.log(`Field type ${fieldType} ${enabled ? 'enabled' : 'disabled'}`);
+                });
+            });
+            
+            // Add event listeners for bulk enable/disable buttons
+            document.getElementById('enableAllFields').addEventListener('click', function() {
+                document.querySelectorAll('.field-type-toggle').forEach(checkbox => {
+                    checkbox.checked = true;
+                    if (typeof setFieldTypeEnabled === 'function') {
+                        setFieldTypeEnabled(checkbox.dataset.fieldType, true);
+                    }
+                });
+                updateFieldStatusDisplay();
+                console.log('All field types enabled');
+            });
+            
+            document.getElementById('disableAllFields').addEventListener('click', function() {
+                document.querySelectorAll('.field-type-toggle').forEach(checkbox => {
+                    checkbox.checked = false;
+                    if (typeof setFieldTypeEnabled === 'function') {
+                        setFieldTypeEnabled(checkbox.dataset.fieldType, false);
+                    }
+                });
+                updateFieldStatusDisplay();
+                console.log('All field types disabled');
+            });
+            
+            // Initialize status display
+            updateFieldStatusDisplay();
+        }
+        
+        /**
+         * Update the field status display to show how many fields are enabled/disabled
+         */
+        function updateFieldStatusDisplay() {
+            const statusAlert = document.getElementById('field-status-alert');
+            const statusText = document.getElementById('field-status-text');
+            
+            if (!statusAlert || !statusText) return;
+            
+            const checkboxes = document.querySelectorAll('.field-type-toggle');
+            const enabledCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const totalCount = checkboxes.length;
+            const disabledCount = totalCount - enabledCount;
+            
+            if (disabledCount === 0) {
+                statusText.textContent = `All ${totalCount} field types are enabled. All DocuSign fields will be converted to PDF.`;
+                statusAlert.className = 'alert alert-success mb-3';
+            } else if (enabledCount === 0) {
+                statusText.textContent = `All ${totalCount} field types are disabled. No DocuSign fields will be converted to PDF.`;
+                statusAlert.className = 'alert alert-warning mb-3';
+            } else {
+                statusText.textContent = `${enabledCount} field types enabled, ${disabledCount} disabled. Only enabled field types will be converted to PDF.`;
+                statusAlert.className = 'alert alert-info mb-3';
+            }
+            
+            statusAlert.style.display = 'block';
+        }
     </script>
 </body>
 </html>

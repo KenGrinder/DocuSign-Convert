@@ -60,3 +60,7 @@ demo.py
 # Temporary files
 *.tmp
 *.temp
+
+# Documentation files
+SIGNATURE_IMPLEMENTATION_GUIDE.md
+DocuSign_JSON_Reference.md
