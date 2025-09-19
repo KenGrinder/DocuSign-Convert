@@ -83,7 +83,7 @@ This project is designed to work with GitHub Pages for free hosting:
 ### Advanced Features
 - **Smart Field Detection**: Intelligent field type determination with priority handling
 - **Coordinate Conversion**: DocuSign top-left origin to PDF bottom-left origin conversion
-- **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and unwanted content
+- **Header/Footer Masking**: Automatically hide DocuSign envelope information and unwanted content
 - **Document Exclusion**: Skip specific documents during conversion
 - **Multi-page Support**: Handle multiple documents and pages seamlessly
 - **System Tab Filtering**: Filter out unwanted system-generated fields

@@ -32,7 +32,7 @@ const CONVERSION_CONFIG = {
     
     // System tab filtering
     systemTabPatterns: [
-        /^\d+_\d+$/, // Pattern like "70081311_237"
+        /^\d+_\d+$/, // Pattern for system-generated tabs (e.g., "123456_789")
         /system/i,
         /hidden/i
     ]
