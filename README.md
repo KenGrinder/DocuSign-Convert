@@ -31,7 +31,6 @@ The web application provides a user-friendly interface for converting DocuSign J
 ### Features
 - **No installation required** - Works in any modern browser
 - **Privacy-first** - All processing happens in your browser
-- **Instant conversion** - No server delays or uploads
 - **Customizable options** - Header/footer masking, document exclusion
 
 ## 🚀 GitHub Pages Deployment
@@ -67,20 +66,21 @@ This project is designed to work with GitHub Pages for free hosting:
 └── README.md               # Documentation
 ```
 
-## 📋 Supported Features
+## Supported Features
 
-- **Tab Types**: Text, SignHere, InitialHere, DateSigned, RadioGroup (basic)
+- **Tab Types**: Text fields, SignHere, InitialHere, DateSigned (currently converts to text fields)
 - **Coordinates**: DocuSign uses top-left origin with pixel-like units; this tool converts to PDF user space using each page's size
 - **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and other unwanted content
 - **PDF Redaction**: Optional security feature to prevent copying of masked content
 - **Document Exclusion**: Skip specific documents during conversion
 - **Multi-page Support**: Handle multiple documents and pages seamlessly
 
-## ⚠️ Limitations
+## Limitations
 
-- Advanced tab types, conditional logic, formulas, and complex radio styling are not fully implemented
-- Client-side version has some limitations compared to the full Python implementation
-- Large files may take longer to process in the browser
+- **Field Types**: Currently only supports text and signature fields. AcroForm supports additional types (checkboxes, radio buttons, dropdowns, list boxes) that are not yet implemented
+- **Advanced Features**: Conditional logic, formulas, and complex styling are not fully implemented
+- **Client-side Processing**: Large files may take longer to process in the browser
+- **Radio Groups**: DocuSign RadioGroup tabs are converted to text fields (not interactive radio buttons)
 
 ## 🛠️ Development
 
