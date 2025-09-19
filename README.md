@@ -4,7 +4,7 @@ This tool converts a DocuSign Template JSON export (including embedded base64 PD
 
 ## 🌐 Web Application
 
-**Try it online**: [GitHub Pages Demo](https://kengrinder.github.io/docusign-converter/) (Coming Soon)
+**Try it online**: [GitHub Pages Demo](https://kengrinder.github.io/DocuSign-Convert/)
 
 The web application provides a user-friendly interface for converting DocuSign JSON files to PDFs directly in your browser. All processing happens client-side, ensuring your files never leave your device.
 
@@ -48,7 +48,7 @@ This project is designed to work with GitHub Pages for free hosting:
 
 2. **Deploy automatically**:
    - The GitHub Actions workflow will automatically deploy the static version
-   - Your site will be available at `https://yourusername.github.io/docusign-converter`
+   - Your site will be available at `https://kengrinder.github.io/DocuSign-Convert`
 
 3. **Custom domain** (optional):
    - Add your domain to the `CNAME` file
