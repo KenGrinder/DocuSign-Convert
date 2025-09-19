@@ -13,7 +13,7 @@ The web application provides a user-friendly interface for converting DocuSign J
 - **No Server Costs**: Completely free hosting on GitHub Pages
 - **Modern UI**: Beautiful, responsive interface with drag-and-drop support
 - **Real-time Conversion**: Instant PDF generation and download
-- **Customizable Options**: Header/footer masking, document exclusion, and more
+- **Customizable Options**: Header/footer masking, document exclusion, field styling, and more
 
 ## 🖥️ Local Usage
 
@@ -31,7 +31,7 @@ The web application provides a user-friendly interface for converting DocuSign J
 ### Features
 - **No installation required** - Works in any modern browser
 - **Privacy-first** - All processing happens in your browser
-- **Customizable options** - Header/footer masking, document exclusion
+- **Customizable options** - Header/footer masking, document exclusion, field styling
 
 ## 🚀 GitHub Pages Deployment
 
@@ -71,7 +71,6 @@ This project is designed to work with GitHub Pages for free hosting:
 - **Tab Types**: Text fields, SignHere, InitialHere, DateSigned (currently converts to text fields)
 - **Coordinates**: DocuSign uses top-left origin with pixel-like units; this tool converts to PDF user space using each page's size
 - **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and other unwanted content
-- **PDF Redaction**: Optional security feature to prevent copying of masked content
 - **Document Exclusion**: Skip specific documents during conversion
 - **Multi-page Support**: Handle multiple documents and pages seamlessly
 

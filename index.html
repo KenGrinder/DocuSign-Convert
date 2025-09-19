@@ -155,16 +155,6 @@
 
                                 <div class="row mt-3">
                                     <div class="col-md-6">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="redact_strips">
-                                            <label class="form-check-label" for="redact_strips">
-                                                <i class="bi bi-shield-check me-1"></i>
-                                                Apply PDF Redaction
-                                            </label>
-                                            <div class="form-text">Prevent copying of masked content (more secure)</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
                                         <label for="exclude_doc_ids" class="form-label">
                                             <i class="bi bi-funnel me-1"></i>
                                             Exclude Document IDs
@@ -216,17 +206,7 @@
                                     </div>
 
                                     <div class="row mt-3">
-                                        <div class="col-md-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="auto_resize">
-                                                <label class="form-check-label" for="auto_resize">
-                                                    <i class="bi bi-arrows-angle-expand me-1"></i>
-                                                    Auto-resize Fields
-                                                </label>
-                                                <div class="form-text">Automatically adjust field size to content</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-12">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" id="show_field_names">
                                                 <label class="form-check-label" for="show_field_names">
@@ -241,14 +221,14 @@
 
                                 <div class="row mt-3">
                                     <div class="col-md-6">
-                   <div class="form-check">
-                       <input class="form-check-input" type="checkbox" id="include_system_tabs" checked>
-                       <label class="form-check-label" for="include_system_tabs">
-                           <i class="bi bi-gear me-1"></i>
-                           Include System Tabs
-                       </label>
-                       <div class="form-text">Include system tabs (uncheck to filter out unwanted fields like "70081311_237")</div>
-                   </div>
+                       <div class="form-check">
+                           <input class="form-check-input" type="checkbox" id="include_system_tabs">
+                           <label class="form-check-label" for="include_system_tabs">
+                               <i class="bi bi-gear me-1"></i>
+                               Include System Tabs
+                           </label>
+                           <div class="form-text">Include system-generated tabs (uncheck to filter out unwanted fields)</div>
+                       </div>
                </div>
                <div class="col-md-6">
                    <div class="form-check">
@@ -483,7 +463,6 @@
                 const options = {
                     maskHeaderHeight: parseFloat(document.getElementById('mask_header_height').value) || 0,
                     maskFooterHeight: parseFloat(document.getElementById('mask_footer_height').value) || 0,
-                    redactStrips: document.getElementById('redact_strips').checked,
                     excludeDocIds: document.getElementById('exclude_doc_ids').value
                         .split(',')
                         .map(id => id.trim())
@@ -491,7 +470,6 @@
                     // Field styling options
                     fieldWidth: parseFloat(document.getElementById('field_width').value) || 120,
                     fieldHeight: parseFloat(document.getElementById('field_height').value) || 20,
-                    autoResize: document.getElementById('auto_resize').checked,
                     showFieldNames: document.getElementById('show_field_names').checked,
                     includeSystemTabs: document.getElementById('include_system_tabs').checked,
                     debugMode: document.getElementById('debug_mode').checked,
