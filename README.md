@@ -54,19 +54,6 @@ This project is designed to work with GitHub Pages for free hosting:
    - Add your domain to the `CNAME` file
    - Update the GitHub Actions workflow with your domain
 
-### File Structure
-
-```
-├── index.html              # Main web page (GitHub Pages entry point)
-├── js/
-│   └── converter.js        # Client-side PDF conversion logic
-├── .github/workflows/
-│   └── deploy.yml          # GitHub Actions deployment
-├── _headers                # Security headers
-├── _redirects              # Redirect rules
-└── README.md               # Documentation
-```
-
 ## Supported Features
 
 ### Field Types
@@ -137,3 +124,4 @@ Users are responsible for ensuring they have the right to convert their document
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
