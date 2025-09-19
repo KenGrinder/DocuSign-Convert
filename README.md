@@ -2,6 +2,8 @@
 
 This tool converts a DocuSign Template JSON export (including embedded base64 PDF(s) and tab coordinates) into a single merged PDF containing Adobe AcroForm fields positioned to match the DocuSign tabs.
 
+*Mostly AI Slop*
+
 ## 🌐 Web Application
 
 **Try it online**: [GitHub Pages Demo](https://kengrinder.github.io/DocuSign-Convert/)
