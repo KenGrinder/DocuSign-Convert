@@ -126,40 +126,21 @@ const FIELD_TRANSLATORS = {
  */
 async function translateField(fieldType, fieldData, pdfDoc, page, options = {}) {
     try {
-        // DEBUG: Log field translation start
-        console.log(`🔄 TRANSLATE FIELD START:`, {
-            fieldType: fieldType,
-            fieldData: {
-                tabLabel: fieldData.tabLabel,
-                name: fieldData.name,
-                xPosition: fieldData.xPosition,
-                yPosition: fieldData.yPosition,
-                stampType: fieldData.stampType,
-                tabType: fieldData.tabType
-            },
-            options: options
-        });
         
         // Check if field type is supported and enabled
         const translatorConfig = FIELD_TRANSLATORS[fieldType];
         if (!translatorConfig) {
-            console.warn(`❌ Unsupported field type: ${fieldType}`);
             return false;
         }
         
         if (!translatorConfig.enabled) {
-            console.log(`⏭️ Field type ${fieldType} is disabled, skipping`);
             return false;
         }
         
         // Validate field data
         if (!validateFieldData(fieldData, fieldType)) {
-            console.warn(`❌ Invalid field data for ${fieldType}:`, fieldData);
             return false;
         }
-        
-        // DEBUG: Log validation success
-        console.log(`✅ Field validation passed for ${fieldType}`);
         
         // Use the same coordinate conversion as the main converter for consistency
         const pageSize = page.getSize();
@@ -169,19 +150,6 @@ async function translateField(fieldType, fieldData, pdfDoc, page, options = {}) 
         if (options.rect && options.rect.llx !== undefined) {
             // Use the pre-calculated coordinates from the main converter
             pdfCoords = options.rect;
-            console.log(`📐 USING PRE-CALCULATED COORDINATES:`, {
-                fieldType: fieldType,
-                rect: options.rect,
-                source: 'main_converter',
-                rectDetails: {
-                    llx: options.rect.llx,
-                    lly: options.rect.lly,
-                    urx: options.rect.urx,
-                    ury: options.rect.ury,
-                    width: options.rect.urx - options.rect.llx,
-                    height: options.rect.ury - options.rect.lly
-                }
-            });
         } else {
             // Fall back to manual coordinate conversion
             const x = parseFloat(fieldData.xPosition || fieldData.xPositionString || 0);
@@ -203,37 +171,6 @@ async function translateField(fieldType, fieldData, pdfDoc, page, options = {}) 
             const width = parseFloat(fieldData.width || fieldData.widthString || defaultWidth);
             const height = parseFloat(fieldData.height || fieldData.heightString || defaultHeight);
             
-            // DEBUG: Log coordinate conversion
-            console.log(`📐 COORDINATE CONVERSION:`, {
-                fieldType: fieldType,
-                originalCoords: {
-                    x: fieldData.xPosition,
-                    y: fieldData.yPosition,
-                    width: fieldData.width,
-                    height: fieldData.height
-                },
-                parsedCoords: { x, y, width, height },
-                defaultDimensions: { defaultWidth, defaultHeight },
-                pageSize: pageSize
-            });
-            
-            // Additional debug for checkboxes specifically
-            if (fieldType === 'checkboxTabs') {
-                console.log(`🔍 CHECKBOX DEBUG:`, {
-                    fieldData: fieldData,
-                    xPosition: fieldData.xPosition,
-                    yPosition: fieldData.yPosition,
-                    width: fieldData.width,
-                    height: fieldData.height,
-                    parsedWidth: width,
-                    parsedHeight: height,
-                    defaultWidth: defaultWidth,
-                    defaultHeight: defaultHeight,
-                    finalWidth: width,
-                    finalHeight: height
-                });
-            }
-            
             // Convert from DocuSign coordinates (top-left origin) to PDF coordinates (bottom-left origin)
             pdfCoords = {
                 llx: x,
@@ -243,61 +180,12 @@ async function translateField(fieldType, fieldData, pdfDoc, page, options = {}) 
             };
         }
         
-        // DEBUG: Log final coordinates
-        console.log(`🎯 FINAL PDF COORDINATES:`, {
-            fieldType: fieldType,
-            pdfCoords: pdfCoords,
-            pageSize: pageSize
-        });
-        
-        // Debug coordinate conversion for signature fields
-        if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
-            console.log(`📐 Coordinate conversion for ${fieldType}:`, {
-                original: {
-                    xPosition: fieldData.xPosition,
-                    yPosition: fieldData.yPosition,
-                    width: fieldData.width,
-                    height: fieldData.height
-                },
-                converted: pdfCoords,
-                pageSize: pageSize
-            });
-        }
-        
-        // DEBUG: Log field creation attempt
-        console.log(`🏗️ CALLING FIELD CREATOR:`, {
-            fieldType: fieldType,
-            translatorFunction: translatorConfig.translator.name,
-            fieldData: {
-                tabLabel: fieldData.tabLabel,
-                name: fieldData.name,
-                stampType: fieldData.stampType,
-                tabType: fieldData.tabType
-            },
-            coordinates: pdfCoords
-        });
-        
         // Call the specific translator
         const result = await translatorConfig.translator(fieldData, pdfDoc, page, pdfCoords, options);
-        
-        // DEBUG: Log field creation result
-        console.log(`📊 FIELD CREATION RESULT:`, {
-            fieldType: fieldType,
-            fieldName: fieldData.tabLabel || fieldData.name || 'unnamed',
-            success: result,
-            translatorFunction: translatorConfig.translator.name
-        });
-        
-        if (result) {
-            console.log(`✅ Successfully translated ${fieldType} field: ${fieldData.tabLabel || fieldData.name || 'unnamed'}`);
-        } else {
-            console.warn(`❌ Failed to translate ${fieldType} field: ${fieldData.tabLabel || fieldData.name || 'unnamed'}`);
-        }
         
         return result;
         
     } catch (error) {
-        console.error(`Failed to translate ${fieldType} field:`, error);
         return false;
     }
 }
@@ -385,11 +273,6 @@ function convertDocuSignCoordinates(fieldData, page, fieldType = 'textTabs') {
     const pdfWidth = width;
     const pdfHeight = height;
     
-    console.log(`Coordinate conversion:`, {
-        original: { x, y, width, height },
-        converted: { pdfX, pdfY, pdfWidth, pdfHeight },
-        pageHeight: pageHeight
-    });
     
     return {
         llx: pdfX,
@@ -418,16 +301,6 @@ async function translateTextField(fieldData, pdfDoc, page, coords, options) {
         const fieldName = generateFieldName(fieldData);
         const defaultValue = fieldData.value || options.defaultValue || '';
         
-        // Debug coordinate information for text fields
-        console.log(`Text field coordinates:`, {
-            llx: coords.llx,
-            lly: coords.lly,
-            urx: coords.urx,
-            ury: coords.ury,
-            width: coords.urx - coords.llx,
-            height: coords.ury - coords.lly,
-            fieldName: fieldName
-        });
         
         // Create proper PDF text form field using correct pdf-lib API
         const form = pdfDoc.getForm();
@@ -448,7 +321,6 @@ async function translateTextField(fieldData, pdfDoc, page, coords, options) {
         
         return true;
     } catch (error) {
-        console.error('Failed to translate text field:', error);
         return false;
     }
 }
@@ -467,43 +339,16 @@ async function translateSignatureField(fieldData, pdfDoc, page, coords, options)
     try {
         const fieldName = generateFieldName(fieldData);
         
-        console.log(`🎯 translateSignatureField called:`, {
-            fieldName: fieldName,
-            coords: coords,
-            fieldData: {
-                tabLabel: fieldData.tabLabel,
-                name: fieldData.name,
-                xPosition: fieldData.xPosition,
-                yPosition: fieldData.yPosition
-            }
-        });
-        
-        // DEBUG: Check if the function is available
+        // Check if the function is available
         if (typeof window.createSignatureField !== 'function') {
-            console.error('❌ createSignatureField function is not available!');
             return false;
         }
-        
-        console.log(`🔧 Calling createSignatureField with:`, {
-            fieldName: fieldName,
-            coords: coords,
-            fieldType: 'signature'
-        });
         
         // Use the unified signature field creation from converter.js
         await window.createSignatureField(pdfDoc, page, fieldName, coords, 'signature');
         
-        console.log(`✅ translateSignatureField completed successfully for: ${fieldName}`);
         return true;
     } catch (error) {
-        console.error('❌ Failed to translate signature field:', error);
-        console.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            fieldName: fieldName,
-            coords: coords,
-            fieldData: fieldData
-        });
         return false;
     }
 }
@@ -523,26 +368,12 @@ async function translateStampField(fieldData, pdfDoc, page, coords, options) {
     try {
         const fieldName = generateFieldName(fieldData);
         
-        console.log(`🖋️ translateStampField called:`, {
-            fieldName: fieldName,
-            coords: coords,
-            fieldData: {
-                tabLabel: fieldData.tabLabel,
-                name: fieldData.name,
-                xPosition: fieldData.xPosition,
-                yPosition: fieldData.yPosition,
-                stampType: fieldData.stampType
-            }
-        });
-        
         // Use the same signature field creation logic as regular signatures
         // This allows for future customization of stamp-specific behavior
         await window.createSignatureField(pdfDoc, page, fieldName, coords, 'signature');
         
-        console.log(`✅ Stamp field created successfully: ${fieldName}`);
         return true;
     } catch (error) {
-        console.error('❌ Failed to translate stamp field:', error);
         return false;
     }
 }
@@ -566,7 +397,6 @@ async function translateInitialsField(fieldData, pdfDoc, page, coords, options) 
         
         return true;
     } catch (error) {
-        console.error('Failed to translate initials field:', error);
         return false;
     }
 }
@@ -586,24 +416,6 @@ async function translateCheckboxField(fieldData, pdfDoc, page, coords, options) 
         const fieldName = generateFieldName(fieldData);
         const isChecked = fieldData.selected === true || fieldData.selected === 'true';
         
-        // Debug coordinate information
-        console.log(`Checkbox coordinates:`, {
-            llx: coords.llx,
-            lly: coords.lly,
-            urx: coords.urx,
-            ury: coords.ury,
-            width: coords.urx - coords.llx,
-            height: coords.ury - coords.lly,
-            fieldName: fieldName
-        });
-        
-        // Additional debug for checkbox coordinates
-        console.log(`🔍 CHECKBOX COORDS DEBUG:`, {
-            coords: coords,
-            calculatedWidth: coords.urx - coords.llx,
-            calculatedHeight: coords.ury - coords.lly,
-            fieldData: fieldData
-        });
         
         // Use coordinates as provided (minimum sizing handled in coordinate conversion)
         const width = coords.urx - coords.llx;
@@ -628,11 +440,8 @@ async function translateCheckboxField(fieldData, pdfDoc, page, coords, options) 
             borderColor: PDFLib.rgb(0, 0, 0)
         });
         
-        console.log(`✓ Created checkbox: ${fieldName} at (${coords.llx}, ${coords.lly}) size ${width}x${height}`);
-        
         return true;
     } catch (error) {
-        console.error('Failed to translate checkbox field:', error);
         return false;
     }
 }
@@ -653,12 +462,10 @@ async function translateRadioGroupField(fieldData, pdfDoc, page, coords, options
         const radios = fieldData.radios || [];
         
         if (radios.length === 0) {
-            console.warn('Radio group has no radio buttons');
             return false;
         }
         
         // Create radio group using correct pdf-lib API
-        console.log('Creating radio group using correct pdf-lib API');
         
         // Create radio group
         const form = pdfDoc.getForm();
@@ -693,12 +500,10 @@ async function translateRadioGroupField(fieldData, pdfDoc, page, coords, options
                 radioGroup.select(radioValue);
             }
             
-            console.log(`✓ Added radio option: ${radioValue}`);
         }
         
         return true;
     } catch (error) {
-        console.error('Failed to translate radio group field:', error);
         return false;
     }
 }
@@ -719,7 +524,6 @@ async function translateListField(fieldData, pdfDoc, page, coords, options) {
         const listItems = fieldData.listItems || [];
         
         if (listItems.length === 0) {
-            console.warn('List field has no items');
             return false;
         }
         
@@ -751,7 +555,6 @@ async function translateListField(fieldData, pdfDoc, page, coords, options) {
         
         return true;
     } catch (error) {
-        console.error('Failed to translate list field:', error);
         return false;
     }
 }
@@ -788,7 +591,6 @@ async function translateFullNameField(fieldData, pdfDoc, page, coords, options) 
         
         return true;
     } catch (error) {
-        console.error('Failed to translate full name field:', error);
         return false;
     }
 }
@@ -825,7 +627,6 @@ async function translateDateSignedField(fieldData, pdfDoc, page, coords, options
         
         return true;
     } catch (error) {
-        console.error('Failed to translate date signed field:', error);
         return false;
     }
 }
@@ -862,7 +663,6 @@ async function translateCompanyField(fieldData, pdfDoc, page, coords, options) {
         
         return true;
     } catch (error) {
-        console.error('Failed to translate company field:', error);
         return false;
     }
 }
@@ -899,7 +699,6 @@ async function translateTitleField(fieldData, pdfDoc, page, coords, options) {
         
         return true;
     } catch (error) {
-        console.error('Failed to translate title field:', error);
         return false;
     }
 }
@@ -936,7 +735,6 @@ async function translateEmailField(fieldData, pdfDoc, page, coords, options) {
         
         return true;
     } catch (error) {
-        console.error('Failed to translate email field:', error);
         return false;
     }
 }
@@ -973,7 +771,6 @@ async function translateNumericalField(fieldData, pdfDoc, page, coords, options)
         
         return true;
     } catch (error) {
-        console.error('Failed to translate numerical field:', error);
         return false;
     }
 }
@@ -1023,10 +820,8 @@ async function translateSignerAttachmentField(fieldData, pdfDoc, page, coords, o
             height: coords.ury - coords.lly
         });
         
-        console.log(`✓ Created attachment text field: ${attachmentName} -> ${placeholderText}`);
         return true;
     } catch (error) {
-        console.error('Failed to translate signer attachment field:', error);
         return false;
     }
 }
@@ -1122,15 +917,12 @@ function convertFontColor(docuSignColor) {
 function setFieldTypeEnabled(fieldType, enabled) {
     try {
         if (!FIELD_TRANSLATORS[fieldType]) {
-            console.warn(`Unknown field type: ${fieldType}`);
             return false;
         }
         
         FIELD_TRANSLATORS[fieldType].enabled = enabled;
-        console.log(`Field type ${fieldType} ${enabled ? 'enabled' : 'disabled'}`);
         return true;
     } catch (error) {
-        console.error(`Failed to set field type ${fieldType} enabled state:`, error);
         return false;
     }
 }
@@ -1144,7 +936,6 @@ function setFieldTypeEnabled(fieldType, enabled) {
 function getFieldTypeConfig(fieldType) {
     try {
         if (!FIELD_TRANSLATORS[fieldType]) {
-            console.warn(`Unknown field type: ${fieldType}`);
             return null;
         }
         
@@ -1153,7 +944,6 @@ function getFieldTypeConfig(fieldType) {
             fieldType: fieldType
         };
     } catch (error) {
-        console.error(`Failed to get field type config for ${fieldType}:`, error);
         return null;
     }
 }
@@ -1174,7 +964,6 @@ function getAllFieldTypeConfigs() {
         }
         return configs;
     } catch (error) {
-        console.error('Failed to get all field type configs:', error);
         return {};
     }
 }
@@ -1189,10 +978,8 @@ function resetAllFieldTypes() {
         for (const fieldType of Object.keys(FIELD_TRANSLATORS)) {
             FIELD_TRANSLATORS[fieldType].enabled = true;
         }
-        console.log('All field types reset to enabled');
         return true;
     } catch (error) {
-        console.error('Failed to reset field types:', error);
         return false;
     }
 }
@@ -1210,7 +997,6 @@ function getFieldTypeStates() {
         }
         return states;
     } catch (error) {
-        console.error('Failed to get field type states:', error);
         return {};
     }
 }

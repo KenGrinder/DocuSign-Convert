@@ -18,7 +18,6 @@
         window.PdfDigitalSigner = PdfDigitalSigner;
         window.pdflibAddPlaceholder = pdflibAddPlaceholder;
         
-        console.log('Real signature field libraries loaded successfully');
     </script>
     <style>
         .hero-section {
@@ -499,7 +498,6 @@
                 showAlert('PDF converted successfully! Download started.', 'success');
                 
             } catch (error) {
-                console.error('Conversion error:', error);
                 showAlert(`Conversion failed: ${error.message}`, 'danger');
             } finally {
                 convertBtn.style.display = 'inline-block';
@@ -592,7 +590,6 @@
                         updateFieldStatusDisplay();
                     }
                     
-                    console.log(`Field type ${fieldType} ${enabled ? 'enabled' : 'disabled'}`);
                 });
             });
             
@@ -605,7 +602,6 @@
                     }
                 });
                 updateFieldStatusDisplay();
-                console.log('All field types enabled');
             });
             
             document.getElementById('disableAllFields').addEventListener('click', function() {
@@ -616,7 +612,6 @@
                     }
                 });
                 updateFieldStatusDisplay();
-                console.log('All field types disabled');
             });
             
             // Initialize status display

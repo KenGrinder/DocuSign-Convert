@@ -156,15 +156,7 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             throw new Error('Invalid template data: Missing or invalid documents array');
         }
         
-        console.log('🚀 Starting DocuSign to PDF conversion...');
-        
-        // DEBUG: Log template analysis
-        console.log('📊 TEMPLATE ANALYSIS:', {
-            templateId: templateData.templateId,
-            templateName: templateData.name,
-            documentCount: templateData.documents ? templateData.documents.length : 0,
-            recipientCount: templateData.recipients ? Object.keys(templateData.recipients).length : 0
-        });
+        // Starting DocuSign to PDF conversion
         
         // Extract documents from the template
         const documents = templateData.documents || [];
@@ -181,7 +173,6 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             const base64Data = doc.documentBase64 || doc.documentBase64Bytes;
             
             if (!base64Data) {
-                console.warn(`No base64 data found for document ${docId}`);
                 continue;
             }
 
@@ -190,7 +181,7 @@ async function convertDocuSignToPDF(templateData, options = {}) {
                 const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
                 pdfDocs.push({ docId, pdfDoc });
             } catch (error) {
-                console.warn(`Failed to load document ${docId}:`, error);
+                // Skip invalid documents
             }
         }
 
@@ -240,7 +231,6 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             
             // Validate tab data
             if (!tab || typeof tab !== 'object') {
-                console.warn(`Invalid tab data at index ${i}, skipping`);
                 continue;
             }
             
@@ -251,30 +241,12 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             // Find the correct page in the merged PDF
             const pageMappingEntry = pageMapping.find(mapping => mapping.docId === docId);
             if (!pageMappingEntry) {
-                console.warn(`No page mapping found for document ID ${docId}`);
-                console.warn(`Available document IDs: [${pageMapping.map(m => m.docId).join(', ')}]`);
-                console.warn(`Skipping field: ${tab.tabLabel || tab.name || 'unnamed'} (${tabType})`);
                 continue;
             }
 
-            // Enhanced logging for signature fields to debug the issue
-            if (tabType === 'signhere' || tabType === 'initialhere') {
-                console.log(`🔍 Processing ${tabType} field:`, {
-                    fieldName: tab.tabLabel || tab.name,
-                    docId: docId,
-                    pageNumber: pageNumber,
-                    pageMappingEntry: pageMappingEntry,
-                    xPosition: tab.xPosition,
-                    yPosition: tab.yPosition,
-                    stampType: tab.stampType,
-                    tabType: tab.tabType,
-                    detectedBy: tab.stampType ? 'stampType' : 'tabType'
-                });
-            }
 
             const absolutePageIndex = pageMappingEntry.startPage + Math.max(0, pageNumber - 1);
             if (absolutePageIndex >= mergedPdf.getPageCount()) {
-                console.warn(`Page ${pageNumber} not found in document ${docId}`);
                 continue;
             }
 
@@ -284,7 +256,6 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         // Convert tab coordinates
         const rect = getTabRectangle(tab, pageSize, options);
         if (!rect) {
-            console.warn(`Invalid coordinates for tab ${i}`);
             continue;
         }
 
@@ -325,43 +296,7 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         // Use the translation system to process the field
         const fieldType = determineFieldType(tab);
         
-        // DEBUG: Log field type determination
-        console.log(`🔍 FIELD TYPE DETERMINATION:`, {
-            tabLabel: tab.tabLabel,
-            tabType: tab.tabType,
-            stampType: tab.stampType,
-            determinedFieldType: fieldType,
-            xPosition: tab.xPosition,
-            yPosition: tab.yPosition
-        });
-        
         if (fieldType) {
-            // DEBUG: Log field processing start
-            console.log(`🚀 STARTING FIELD PROCESSING:`, {
-                fieldType: fieldType,
-                fieldName: fieldName,
-                coordinates: rect,
-                tabData: {
-                    tabLabel: tab.tabLabel,
-                    name: tab.name,
-                    xPosition: tab.xPosition,
-                    yPosition: tab.yPosition,
-                    stampType: tab.stampType,
-                    tabType: tab.tabType
-                }
-            });
-            
-            // Check if this is a signature field and log special handling
-            if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
-                console.log(`🎯 PROCESSING SIGNATURE FIELD:`, {
-                    fieldType: fieldType,
-                    fieldName: fieldName,
-                    isSignatureField: true,
-                    coordinates: rect,
-                    stampType: tab.stampType,
-                    tabType: tab.tabType
-                });
-            }
             
             // Use the field translation system
             const success = await translateField(fieldType, tab, mergedPdf, page, {
@@ -371,43 +306,12 @@ async function convertDocuSignToPDF(templateData, options = {}) {
                 defaultValue: defaultValue
             });
             
-            // DEBUG: Log field processing result
-            console.log(`📊 FIELD PROCESSING RESULT:`, {
-                fieldType: fieldType,
-                fieldName: fieldName,
-                success: success,
-                isSignatureField: fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs'
-            });
-            
             if (success) {
                 updateFieldTypeCount(fieldType, fieldTypeCounts);
-                if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
-                    console.log(`✅ Successfully created signature field: ${fieldName} at (${tab.xPosition}, ${tab.yPosition}) on document ${docId}`);
-                }
             } else {
-                console.warn(`❌ Failed to translate ${fieldType} field:`, fieldName);
-                if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
-                    console.error(`🚨 SIGNATURE FIELD FAILED:`, {
-                        fieldName: fieldName,
-                        fieldType: fieldType,
-                        tab: tab,
-                        coordinates: rect,
-                        error: 'Field translation returned false'
-                    });
-                }
                 fieldTypeCounts.other++;
             }
         } else {
-            // DEBUG: Log unknown field type
-            console.log(`❓ UNKNOWN FIELD TYPE:`, {
-                tabLabel: tab.tabLabel,
-                tabType: tab.tabType,
-                stampType: tab.stampType,
-                xPosition: tab.xPosition,
-                yPosition: tab.yPosition,
-                reason: 'determineFieldType returned null'
-            });
-            
             // Fallback to text field for unknown types
             await createTextField(mergedPdf, page, fieldName, rect, defaultValue, options);
             fieldTypeCounts.other++;
@@ -432,7 +336,6 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         return await mergedPdf.save();
         
     } catch (error) {
-        console.error('PDF conversion error:', error);
         throw new Error(`PDF conversion failed: ${error.message}`);
     }
 }
@@ -515,37 +418,6 @@ function getTabRectangle(tab, pageSize, options = {}) {
         const width = (parsedWidth > 0) ? parsedWidth : defaultWidth;
         const height = (parsedHeight > 0) ? parsedHeight : defaultHeight;
         
-        // Debug the width/height calculation
-        if (fieldType === 'checkboxTabs') {
-            console.log(`🔧 WIDTH/HEIGHT CALCULATION:`, {
-                tabWidth: tab.width,
-                tabWidthString: tab.widthString,
-                tabHeight: tab.height,
-                tabHeightString: tab.heightString,
-                defaultWidth: defaultWidth,
-                defaultHeight: defaultHeight,
-                parsedWidth: parsedWidth,
-                parsedHeight: parsedHeight,
-                finalWidth: width,
-                finalHeight: height,
-                widthLogic: `(${parsedWidth} > 0) ? ${parsedWidth} : ${defaultWidth}`,
-                heightLogic: `(${parsedHeight} > 0) ? ${parsedHeight} : ${defaultHeight}`
-            });
-        }
-        
-        // Debug logging for checkbox dimensions
-        if (fieldType === 'checkboxTabs') {
-            console.log(`🔧 CHECKBOX DIMENSIONS IN getTabRectangle:`, {
-                tabLabel: tab.tabLabel,
-                originalWidth: tab.width,
-                originalHeight: tab.height,
-                defaultWidth: defaultWidth,
-                defaultHeight: defaultHeight,
-                finalWidth: width,
-                finalHeight: height,
-                fieldType: fieldType
-            });
-        }
         
         // Convert from DocuSign coordinates (top-left origin) to PDF coordinates (bottom-left origin)
         const llx = x;
@@ -555,20 +427,8 @@ function getTabRectangle(tab, pageSize, options = {}) {
         
         const rect = { llx, lly, urx, ury };
         
-        // Debug logging for checkbox final rectangle
-        if (fieldType === 'checkboxTabs') {
-            console.log(`🔧 CHECKBOX FINAL RECTANGLE:`, {
-                tabLabel: tab.tabLabel,
-                rect: rect,
-                calculatedWidth: urx - llx,
-                calculatedHeight: ury - lly,
-                pageSize: pageSize
-            });
-        }
-        
         return rect;
     } catch (error) {
-        console.warn('Invalid tab coordinates:', error);
         return null;
     }
 }
@@ -605,7 +465,6 @@ async function createTextField(pdfDoc, page, name, rect, defaultValue = '', opti
     try {
         const existingField = form.getField(name);
         if (existingField) {
-            console.warn(`Field "${name}" already exists, skipping creation`);
             return;
         }
     } catch (error) {
@@ -665,7 +524,6 @@ async function createSignatureField(pdfDoc, page, name, rect, fieldType = 'signa
     try {
         const isInitials = fieldType === 'initials';
         const fieldTypeLabel = isInitials ? 'initials' : 'signature';
-        console.log(`Creating optimized electronic ${fieldTypeLabel} field: ${name}`);
         
         // STEP 1: Clean and validate the field name
         let cleanName = name;
@@ -674,27 +532,12 @@ async function createSignatureField(pdfDoc, page, name, rect, fieldType = 'signa
         }
         cleanName = cleanName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
         
-        console.log(`🔧 STEP 1 - Field name processing:`, {
-            originalName: name,
-            cleanName: cleanName,
-            fieldType: fieldType,
-            fieldTypeLabel: fieldTypeLabel
-        });
-        
         // STEP 2: Calculate field dimensions based on type
         // Use the same minimum dimensions as the coordinate conversion for consistency
         const minWidth = isInitials ? 100 : 120;   // Initials: 100pts, Signatures: 120pts (matches coordinate conversion)
         const minHeight = isInitials ? 25 : 20;    // Initials: 25pts, Signatures: 20pts (matches coordinate conversion)
         const width = Math.max(rect.urx - rect.llx, minWidth);
         const height = Math.max(rect.ury - rect.lly, minHeight);
-        
-        console.log(`🔧 STEP 2 - Field dimensions:`, {
-            rect: rect,
-            minWidth: minWidth,
-            minHeight: minHeight,
-            calculatedWidth: width,
-            calculatedHeight: height
-        });
         
         // STEP 3: Create field rectangle array (used in multiple places)
         const fieldRect = pdfDoc.context.obj([
@@ -703,14 +546,6 @@ async function createSignatureField(pdfDoc, page, name, rect, fieldType = 'signa
             PDFLib.PDFNumber.of(rect.llx + width),
             PDFLib.PDFNumber.of(rect.lly + height)
         ]);
-        
-        console.log(`🔧 STEP 3 - Field rectangle created:`, {
-            fieldRect: fieldRect,
-            llx: rect.llx,
-            lly: rect.lly,
-            urx: rect.llx + width,
-            ury: rect.lly + height
-        });
         
         // STEP 4: Create appearance characteristics based on type
         const bgColor = isInitials ? [0.97, 0.97, 0.97] : [0.95, 0.95, 0.95]; // Lighter for initials
@@ -775,49 +610,28 @@ async function createSignatureField(pdfDoc, page, name, rect, fieldType = 'signa
         
         // Handle annotations array properly - it might be a PDFRef or PDFArray
         let annots = page.node.get(PDFLib.PDFName.of('Annots'));
-        console.log(`🔧 STEP 4 - Annotations handling:`, {
-            annotsExists: !!annots,
-            annotsType: annots ? annots.constructor.name : 'undefined',
-            isPDFRef: annots instanceof PDFLib.PDFRef,
-            widgetRef: widgetRef
-        });
         
         if (!annots) {
             // Create new annotations array if none exists
-            console.log(`📝 Creating new annotations array`);
             page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj([widgetRef]));
         } else {
             // If it's a reference, get the actual array
             if (annots instanceof PDFLib.PDFRef) {
-                console.log(`🔗 Looking up PDFRef annotations`);
                 annots = pdfDoc.context.lookup(annots);
             }
             
             // Ensure annots is a mutable array by creating a new one
             const existingAnnots = [];
             if (annots && annots.size && annots.size() > 0) {
-                console.log(`📋 Copying ${annots.size()} existing annotations`);
                 for (let i = 0; i < annots.size(); i++) {
                     existingAnnots.push(annots.get(i));
                 }
             }
             existingAnnots.push(widgetRef);
-            console.log(`📝 Setting annotations array with ${existingAnnots.length} items`);
             page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj(existingAnnots));
         }
         
-        console.log(`✓ Successfully created optimized electronic ${fieldTypeLabel} field: ${cleanName}`);
-        
     } catch (error) {
-        console.error(`Failed to create optimized ${fieldType} field "${name}":`, error);
-        console.error(`Error details:`, {
-            errorType: typeof error,
-            errorMessage: error?.message || 'No message',
-            errorStack: error?.stack || 'No stack',
-            fieldName: name,
-            fieldType: fieldType,
-            rect: rect
-        });
         // Fall back to styled text field if signature field creation fails
         await createSignatureFieldFallback(pdfDoc, page, name, rect);
     }
@@ -873,7 +687,6 @@ async function createWorkingInitialsField(pdfDoc, page, name, rect) {
  */
 async function createWorkingInitialsField(pdfDoc, page, name, rect) {
     try {
-        console.log(`Creating working electronic initials field: ${name}`);
         
         // STEP 1: Clean and validate the field name
         // PDF field names must be alphanumeric with underscores/hyphens only
@@ -975,10 +788,8 @@ async function createWorkingInitialsField(pdfDoc, page, name, rect) {
             page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj([widgetRef]));
         }
         
-        console.log(`✓ Successfully created working electronic signature field: ${cleanName}`);
         
     } catch (error) {
-        console.error(`Failed to create working signature field "${name}":`, error);
         // Fall back to styled text field if signature field creation fails
         await createSignatureFieldFallback(pdfDoc, page, name, rect);
     }
@@ -994,19 +805,16 @@ async function createWorkingInitialsField(pdfDoc, page, name, rect) {
  * @param {Object} options - Styling options
  */
 async function createSignatureFieldFallback(pdfDoc, page, name, rect, options = {}) {
-    console.log(`🔄 FALLBACK: Creating signature field fallback for "${name}"`);
     const form = pdfDoc.getForm();
     
     // Check if field already exists to avoid duplicate name errors
     try {
         const existingField = form.getField(name);
         if (existingField) {
-            console.warn(`Field "${name}" already exists, skipping creation`);
             return;
         }
     } catch (error) {
         // Field doesn't exist, continue with creation
-        console.log(`✅ Field "${name}" doesn't exist, proceeding with creation`);
     }
     
     try {
@@ -1040,11 +848,9 @@ async function createSignatureFieldFallback(pdfDoc, page, name, rect, options = 
         // Make the field required to indicate it needs to be filled
         signatureField.enableRequired();
         
-        console.log(`Successfully created styled signature field (fallback): ${name}`);
         
     } catch (error) {
         // Final fallback to basic text field if styled field creation fails
-        console.warn(`Failed to create styled signature field "${name}", falling back to basic text field:`, error);
         await createTextField(pdfDoc, page, name, rect, '[Signature Required]', options);
     }
 }
@@ -1064,10 +870,9 @@ async function createDateField(pdfDoc, page, name, rect, options = {}) {
         // Check if field already exists to avoid duplicate name errors
         try {
             const existingField = form.getField(name);
-            if (existingField) {
-                console.warn(`Field "${name}" already exists, skipping creation`);
-                return;
-            }
+        if (existingField) {
+            return;
+        }
         } catch (error) {
             // Field doesn't exist, continue with creation
         }
@@ -1108,12 +913,11 @@ async function createDateField(pdfDoc, page, name, rect, options = {}) {
         try {
             dateField.defaultUpdateAppearances();
         } catch (error) {
-            console.warn(`Could not update date field appearance for "${name}":`, error);
+            // Appearance update failed, continue
         }
         
     } catch (error) {
         // Fallback to basic text field if date field creation fails
-        console.warn(`Failed to create date field "${name}", falling back to text field:`, error);
         // Generate a new unique name for the fallback field to avoid conflicts
         const fallbackName = `${name}_fallback_${Date.now()}`;
         await createTextField(pdfDoc, page, fallbackName, rect, '', options);
@@ -1136,10 +940,9 @@ async function createCheckboxField(pdfDoc, page, name, rect, isChecked = false, 
         // Check if field already exists to avoid duplicate name errors
         try {
             const existingField = form.getField(name);
-            if (existingField) {
-                console.warn(`Field "${name}" already exists, skipping creation`);
-                return;
-            }
+        if (existingField) {
+            return;
+        }
         } catch (error) {
             // Field doesn't exist, continue with creation
         }
@@ -1185,7 +988,6 @@ async function createCheckboxField(pdfDoc, page, name, rect, isChecked = false, 
         
     } catch (error) {
         // Fallback to text field if checkbox creation fails
-        console.warn(`Failed to create checkbox field "${name}", falling back to text field:`, error);
         const fallbackValue = isChecked ? '[✓]' : '[ ]';
         await createTextField(pdfDoc, page, name, rect, fallbackValue, options);
     }
@@ -1240,7 +1042,7 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
             throw new Error('pdflibAddPlaceholder not available - signature libraries not loaded');
         }
         
-        console.log('Adding real signature fields using @signpdf/placeholder-pdf-lib...');
+        // Adding real signature fields using @signpdf/placeholder-pdf-lib
         
         // Load the PDF document
         const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
@@ -1250,7 +1052,7 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
             const field = signatureFields[i];
             const rect = field.rect;
             
-            console.log(`Adding signature field: ${field.name}`);
+            // Adding signature field: ${field.name}
             
             // Use pdflibAddPlaceholder to add the signature field
             // This creates both the /Sig field and the visible /Widget that Adobe recognizes
@@ -1280,11 +1082,9 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
                 cleanName = cleanName.substring(0, 37) + '_' + i;
             }
             
-            console.log(`Using cleaned field name: "${cleanName}" for original: "${field.name}"`);
             
             // Validate all parameters before calling pdflibAddPlaceholder
             const widgetRect = [rect.llx, rect.lly, rect.urx, rect.ury];
-            console.log(`Widget rectangle: [${widgetRect.join(', ')}]`);
             
             // Ensure all parameters are valid
             if (!pdfDoc || !cleanName || !Array.isArray(widgetRect) || widgetRect.length !== 4) {
@@ -1300,32 +1100,22 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
                 widgetRect: widgetRect,
             });
             
-            console.log(`Successfully added signature field: ${field.name}`);
         }
         
         // Update field appearances to ensure all fields are properly rendered
         try {
             const form = pdfDoc.getForm();
             form.updateFieldAppearances();
-            console.log('✓ Updated field appearances for all form fields');
         } catch (error) {
-            console.warn('Failed to update field appearances:', error);
+            // Field appearance update failed, continue
         }
         
-        // DEBUG: Log final summary
-        console.log('📊 FINAL CONVERSION SUMMARY:', {
-            totalFieldsProcessed: Object.values(fieldTypeCounts).reduce((a, b) => a + b, 0),
-            fieldTypeCounts: fieldTypeCounts,
-            signatureFields: fieldTypeCounts.signHereTabs + fieldTypeCounts.initialHereTabs + fieldTypeCounts.stampTabs,
-            otherFields: fieldTypeCounts.other
-        });
         
         // Save the modified PDF
         const finalPdfBytes = await pdfDoc.save();
         return finalPdfBytes;
         
     } catch (error) {
-        console.error('Error adding real signature fields:', error);
         throw error;
     }
 }
