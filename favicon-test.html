@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favicon Test - DocuSign Converter</title>
+    
+    <!-- Test all favicon formats -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-96x96.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    
+    <!-- SVG fallback -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23667eea'/><rect x='8' y='6' width='12' height='16' rx='1' fill='white'/><line x1='10' y1='9' x2='18' y2='9' stroke='%23667eea' stroke-width='0.8'/><line x1='10' y1='11' x2='16' y2='11' stroke='%23667eea' stroke-width='0.6'/><line x1='10' y1='13' x2='17' y2='13' stroke='%23667eea' stroke-width='0.6'/><path d='M20 14 L24 16 L20 18' stroke='white' stroke-width='1.5' fill='none'/><rect x='22' y='8' width='6' height='8' rx='0.5' fill='%23e74c3c'/><text x='25' y='13' font-family='Arial' font-size='4' font-weight='bold' fill='white' text-anchor='middle'>PDF</text></svg>">
+    
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .favicon-preview { display: flex; gap: 20px; align-items: center; margin: 20px 0; }
+        .favicon-box { width: 32px; height: 32px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Favicon Test Page</h1>
+    <p>This page helps you test if your favicon is working correctly on GitHub Pages.</p>
+    
+    <div class="test-section">
+        <h2>Favicon Preview</h2>
+        <div class="favicon-preview">
+            <div class="favicon-box">
+                <img src="favicon.ico" alt="favicon.ico" style="width: 16px; height: 16px;">
+            </div>
+            <div class="favicon-box">
+                <img src="favicon-96x96.png" alt="favicon-96x96.png" style="width: 32px; height: 32px;">
+            </div>
+            <div class="favicon-box">
+                <img src="apple-touch-icon.png" alt="apple-touch-icon.png" style="width: 32px; height: 32px;">
+            </div>
+            <span>Check if these images load correctly</span>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Testing Instructions</h2>
+        <ol>
+            <li><strong>Check browser tab:</strong> Look at your browser tab - you should see the favicon</li>
+            <li><strong>Check bookmarks:</strong> Bookmark this page and check if the favicon appears</li>
+            <li><strong>Clear cache:</strong> Press Ctrl+Shift+R (or Cmd+Shift+R on Mac) to hard refresh</li>
+            <li><strong>Check different browsers:</strong> Test in Chrome, Firefox, Safari, Edge</li>
+            <li><strong>Check mobile:</strong> Test on mobile devices</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>GitHub Pages Favicon Issues</h2>
+        <div class="warning">
+            <strong>Common GitHub Pages Favicon Issues:</strong>
+            <ul>
+                <li>Favicons can take up to 24 hours to appear after deployment</li>
+                <li>Browser caching can prevent favicon updates</li>
+                <li>Some browsers require absolute URLs for favicons</li>
+                <li>GitHub Pages may have caching delays</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Direct Links Test</h2>
+        <p>Test if your favicon files are accessible directly:</p>
+        <ul>
+            <li><a href="favicon.ico" target="_blank">favicon.ico</a></li>
+            <li><a href="favicon-96x96.png" target="_blank">favicon-96x96.png</a></li>
+            <li><a href="apple-touch-icon.png" target="_blank">apple-touch-icon.png</a></li>
+        </ul>
+        <p>If these links work, your favicon files are properly deployed.</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Force Favicon Update</h2>
+        <p>If the favicon isn't showing, try these steps:</p>
+        <ol>
+            <li>Hard refresh the page (Ctrl+Shift+R or Cmd+Shift+R)</li>
+            <li>Clear browser cache completely</li>
+            <li>Wait 24 hours for GitHub Pages caching to clear</li>
+            <li>Try opening the page in an incognito/private window</li>
+        </ol>
+    </div>
+    
+    <script>
+        // Check if favicon files are accessible
+        function testFaviconFiles() {
+            const files = ['favicon.ico', 'favicon-96x96.png', 'apple-touch-icon.png'];
+            const results = document.getElementById('test-results');
+            
+            files.forEach(file => {
+                fetch(file)
+                    .then(response => {
+                        if (response.ok) {
+                            console.log(`✅ ${file} is accessible`);
+                        } else {
+                            console.log(`❌ ${file} returned ${response.status}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.log(`❌ ${file} failed to load:`, error);
+                    });
+            });
+        }
+        
+        // Run test on page load
+        window.onload = testFaviconFiles;
+    </script>
+</body>
+</html>
