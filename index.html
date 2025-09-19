@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuSign JSON to PDF Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #e3f2fd;
+        }
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e3f2fd;
+            transform: scale(1.02);
+        }
+        .feature-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .loading {
+            display: none;
+        }
+        .file-info {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .alert {
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-4">
+                        <i class="bi bi-file-earmark-pdf me-3"></i>
+                        DocuSign JSON to PDF Converter
+                    </h1>
+                    <p class="lead mb-4">
+                        Convert your DocuSign template JSON files into clean, fillable PDFs with Adobe AcroForm fields.
+                        Perfect for creating reusable forms from DocuSign templates.
+                    </p>
+                    <div class="alert alert-info d-inline-block">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> This is a client-side converter. Your files are processed locally and never uploaded to any server.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Upload Form -->
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title text-center mb-4">
+                            <i class="bi bi-upload me-2"></i>
+                            Upload Your DocuSign JSON File
+                        </h3>
+                        
+                        <!-- Alert Messages -->
+                        <div id="alertContainer"></div>
+
+                        <form id="uploadForm">
+                            <!-- File Upload Area -->
+                            <div class="upload-area" id="uploadArea">
+                                <i class="bi bi-cloud-upload fa-3x text-muted mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="mb-3">Drag & Drop your JSON file here</h5>
+                                <p class="text-muted mb-3">or click to browse</p>
+                                <input type="file" id="fileInput" accept=".json" class="d-none" required>
+                                <button type="button" class="btn btn-outline-primary" id="chooseFileBtn">
+                                    <i class="bi bi-folder2-open me-2"></i>
+                                    Choose File
+                                </button>
+                                <div id="fileInfo" class="file-info" style="display: none;">
+                                    <i class="bi bi-file-earmark-code me-2"></i>
+                                    <span id="fileName"></span>
+                                    <small class="text-muted d-block" id="fileSize"></small>
+                                </div>
+                            </div>
+
+                            <!-- Conversion Options -->
+                            <div class="mt-4">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-gear me-2"></i>
+                                    Conversion Options
+                                </h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="mask_header_height" class="form-label">
+                                            <i class="bi bi-eye-slash me-1"></i>
+                                            Header Mask Height (points)
+                                        </label>
+                                        <input type="number" class="form-control" id="mask_header_height" 
+                                               value="24" min="0" step="0.1">
+                                        <div class="form-text">Height to mask from top (default: 24 to hide DocuSign envelope ID)</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="mask_footer_height" class="form-label">
+                                            <i class="bi bi-eye-slash me-1"></i>
+                                            Footer Mask Height (points)
+                                        </label>
+                                        <input type="number" class="form-control" id="mask_footer_height" 
+                                               value="0" min="0" step="0.1">
+                                        <div class="form-text">Height to mask from bottom (default: 0)</div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="redact_strips">
+                                            <label class="form-check-label" for="redact_strips">
+                                                <i class="bi bi-shield-check me-1"></i>
+                                                Apply PDF Redaction
+                                            </label>
+                                            <div class="form-text">Prevent copying of masked content (more secure)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="exclude_doc_ids" class="form-label">
+                                            <i class="bi bi-funnel me-1"></i>
+                                            Exclude Document IDs
+                                        </label>
+                                        <input type="text" class="form-control" id="exclude_doc_ids" 
+                                               placeholder="e.g., 70081311, 63164267">
+                                        <div class="form-text">Comma-separated list of document IDs to exclude</div>
+                                    </div>
+                                </div>
+
+                                <!-- Advanced Field Styling Options -->
+                                <div class="mt-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-palette me-2"></i>
+                                            Field Styling Options
+                                        </h6>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#stylingOptions" aria-expanded="false" aria-controls="stylingOptions">
+                                            <i class="bi bi-chevron-down" id="stylingToggleIcon"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="collapse" id="stylingOptions">
+                                    <div class="alert alert-info mb-3">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Note:</strong> Advanced font styling is limited in client-side PDF generation. 
+                                        Field dimensions and basic styling will be applied, but fonts may use PDF defaults.
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="field_width" class="form-label">
+                                                <i class="bi bi-arrows-expand me-1"></i>
+                                                Default Field Width
+                                            </label>
+                                            <input type="number" class="form-control" id="field_width" 
+                                                   value="120" min="50" max="300" step="10">
+                                            <div class="form-text">Default width in points (when DocuSign doesn't specify)</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="field_height" class="form-label">
+                                                <i class="bi bi-arrows-expand-vertical me-1"></i>
+                                                Default Field Height
+                                            </label>
+                                            <input type="number" class="form-control" id="field_height" 
+                                                   value="20" min="10" max="50" step="2">
+                                            <div class="form-text">Default height in points (when DocuSign doesn't specify)</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="auto_resize">
+                                                <label class="form-check-label" for="auto_resize">
+                                                    <i class="bi bi-arrows-angle-expand me-1"></i>
+                                                    Auto-resize Fields
+                                                </label>
+                                                <div class="form-text">Automatically adjust field size to content</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="show_field_names">
+                                                <label class="form-check-label" for="show_field_names">
+                                                    <i class="bi bi-tag me-1"></i>
+                                                    Show Field Names
+                                                </label>
+                                                <div class="form-text">Display field names as placeholders</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                   <div class="form-check">
+                       <input class="form-check-input" type="checkbox" id="include_system_tabs" checked>
+                       <label class="form-check-label" for="include_system_tabs">
+                           <i class="bi bi-gear me-1"></i>
+                           Include System Tabs
+                       </label>
+                       <div class="form-text">Include system tabs (uncheck to filter out unwanted fields like "70081311_237")</div>
+                   </div>
+               </div>
+               <div class="col-md-6">
+                   <div class="form-check">
+                       <input class="form-check-input" type="checkbox" id="debug_mode">
+                       <label class="form-check-label" for="debug_mode">
+                           <i class="bi bi-bug me-1"></i>
+                           Debug Mode
+                       </label>
+                       <div class="form-text">Show detailed conversion information in console</div>
+                   </div>
+               </div>
+           </div>
+
+                                    <!-- Signature Field Options -->
+                                    <div class="mt-4">
+                                        <h6 class="mb-3">
+                                            <i class="bi bi-pen me-2"></i>
+                                            Signature Field Options
+                                        </h6>
+                                        <div class="alert alert-info mb-3">
+                                            <i class="bi bi-info-circle me-2"></i>
+                                            <strong>Note:</strong> Choose how DocuSign signature and initial fields are converted. 
+                                            Interactive signature fields allow digital signatures in PDF viewers, while text placeholders 
+                                            show "[Signature]" text for manual signing.
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="include_signature_fields" checked>
+                                                    <label class="form-check-label" for="include_signature_fields">
+                                                        <i class="bi bi-pen me-1"></i>
+                                                        Include Signature Fields
+                                                    </label>
+                                                    <div class="form-text">Convert DocuSign signature/initial fields to PDF fields (uncheck to skip entirely)</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="signature_as_text" checked>
+                                                    <label class="form-check-label" for="signature_as_text">
+                                                        <i class="bi bi-type me-1"></i>
+                                                        Use Text Placeholder
+                                                    </label>
+                                                    <div class="form-text">Show "[Signature]" text instead of interactive signature field</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    </div> <!-- End collapse -->
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg" id="convertBtn">
+                                    <i class="bi bi-magic me-2"></i>
+                                    Convert to PDF
+                                </button>
+                                <div class="loading mt-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Converting...</span>
+                                    </div>
+                                    <p class="mt-2">Converting your file, please wait...</p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Features Section -->
+                <div class="row mt-5">
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-file-earmark-pdf fa-3x text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="card-title">Clean PDF Output</h5>
+                                <p class="card-text">Converts DocuSign templates into professional, fillable PDFs with proper form fields.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-shield-lock fa-3x text-success mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="card-title">Privacy First</h5>
+                                <p class="card-text">All processing happens in your browser. Your files never leave your device.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-arrow-repeat fa-3x text-warning mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="card-title">Seamless Transition</h5>
+                                <p class="card-text">Easily migrate your existing DocuSign document templates to Adobe AcroForm format, preserving all your form fields and structure.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="bi bi-code-slash me-2"></i>
+                Built with JavaScript and PDF-lib | 
+                <a href="https://github.com/kengrinder/docusign-converter" class="text-light">
+                    <i class="bi bi-github me-1"></i>View on GitHub
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/converter.js"></script>
+    <script>
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadForm = document.getElementById('uploadForm');
+        const convertBtn = document.getElementById('convertBtn');
+        const loading = document.querySelector('.loading');
+        const alertContainer = document.getElementById('alertContainer');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                showFileInfo(files[0]);
+            }
+        });
+
+        // Button click handler (prevents event bubbling)
+        chooseFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent the upload area click from firing
+            fileInput.click();
+        });
+
+        // Upload area click handler (only when not clicking the button)
+        uploadArea.addEventListener('click', (e) => {
+            // Only trigger if the click wasn't on the button
+            if (e.target !== chooseFileBtn && !chooseFileBtn.contains(e.target)) {
+                fileInput.click();
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                showFileInfo(e.target.files[0]);
+            }
+        });
+
+        // Collapsible styling options toggle
+        const stylingToggle = document.querySelector('[data-bs-target="#stylingOptions"]');
+        const stylingToggleIcon = document.getElementById('stylingToggleIcon');
+        
+        stylingToggle.addEventListener('click', () => {
+            const isExpanded = stylingToggle.getAttribute('aria-expanded') === 'true';
+            stylingToggleIcon.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+        });
+
+        function showFileInfo(file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="bi bi-${type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alertDiv);
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showAlert('Please select a JSON file', 'danger');
+                return;
+            }
+
+            convertBtn.style.display = 'none';
+            loading.style.display = 'block';
+            alertContainer.innerHTML = '';
+
+            try {
+                const text = await file.text();
+                const jsonData = JSON.parse(text);
+                
+                const options = {
+                    maskHeaderHeight: parseFloat(document.getElementById('mask_header_height').value) || 0,
+                    maskFooterHeight: parseFloat(document.getElementById('mask_footer_height').value) || 0,
+                    redactStrips: document.getElementById('redact_strips').checked,
+                    excludeDocIds: document.getElementById('exclude_doc_ids').value
+                        .split(',')
+                        .map(id => id.trim())
+                        .filter(id => id.length > 0),
+                    // Field styling options
+                    fieldWidth: parseFloat(document.getElementById('field_width').value) || 120,
+                    fieldHeight: parseFloat(document.getElementById('field_height').value) || 20,
+                    autoResize: document.getElementById('auto_resize').checked,
+                    showFieldNames: document.getElementById('show_field_names').checked,
+                    includeSystemTabs: document.getElementById('include_system_tabs').checked,
+                    debugMode: document.getElementById('debug_mode').checked,
+                    // Signature field options
+                    includeSignatureFields: document.getElementById('include_signature_fields').checked,
+                    signatureAsText: document.getElementById('signature_as_text').checked
+                };
+
+                const pdfBytes = await convertDocuSignToPDF(jsonData, options);
+                
+                // Download the PDF
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name.replace('.json', '_converted.pdf');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showAlert('PDF converted successfully! Download started.', 'success');
+                
+            } catch (error) {
+                console.error('Conversion error:', error);
+                showAlert(`Conversion failed: ${error.message}`, 'danger');
+            } finally {
+                convertBtn.style.display = 'inline-block';
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
