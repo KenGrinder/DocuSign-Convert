@@ -12,7 +12,6 @@ The web application provides a user-friendly interface for converting DocuSign J
 
 ### Features
 - **Privacy First**: All processing happens in your browser
-- **No Server Costs**: Completely free hosting on GitHub Pages
 - **Modern UI**: Beautiful, responsive interface with drag-and-drop support
 - **Real-time Conversion**: Instant PDF generation and download
 - **Customizable Options**: Header/footer masking, document exclusion, field styling, and more
@@ -49,7 +48,7 @@ This project is designed to work with GitHub Pages for free hosting:
 
 2. **Deploy automatically**:
    - The GitHub Actions workflow will automatically deploy the static version
-   - Your site will be available at `https://kengrinder.github.io/DocuSign-Convert`
+   - Your site will be available at `https://USERNAME.github.io/DocuSign-Convert`
 
 3. **Custom domain** (optional):
    - Add your domain to the `CNAME` file
