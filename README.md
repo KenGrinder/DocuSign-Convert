@@ -130,7 +130,8 @@ This is a pure static web application. To modify:
 ## ⚖️ Legal Disclaimer
 
 This tool is not affiliated with, endorsed by, or sponsored by DocuSign or Adobe. 
-It processes user-exported JSON data to create standard PDF files. 
+DocuSign and Adobe are trademarks of their respective owners. 
+This tool processes user-exported JSON data to create standard PDF files. 
 Users are responsible for ensuring they have the right to convert their documents.
 
 ## 📄 License
