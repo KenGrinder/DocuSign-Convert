@@ -33,6 +33,13 @@ const FIELD_TRANSLATORS = {
         translator: translateInitialsField
     },
     
+    stampTabs: {
+        name: 'Stamp Fields',
+        description: 'Adobe Fill & Sign signature fields for stamp-based signatures',
+        enabled: true,
+        translator: translateStampField
+    },
+    
     // Form controls
     checkboxTabs: {
         name: 'Checkbox Fields',
@@ -119,32 +126,172 @@ const FIELD_TRANSLATORS = {
  */
 async function translateField(fieldType, fieldData, pdfDoc, page, options = {}) {
     try {
+        // DEBUG: Log field translation start
+        console.log(`🔄 TRANSLATE FIELD START:`, {
+            fieldType: fieldType,
+            fieldData: {
+                tabLabel: fieldData.tabLabel,
+                name: fieldData.name,
+                xPosition: fieldData.xPosition,
+                yPosition: fieldData.yPosition,
+                stampType: fieldData.stampType,
+                tabType: fieldData.tabType
+            },
+            options: options
+        });
+        
         // Check if field type is supported and enabled
         const translatorConfig = FIELD_TRANSLATORS[fieldType];
         if (!translatorConfig) {
-            console.warn(`Unsupported field type: ${fieldType}`);
+            console.warn(`❌ Unsupported field type: ${fieldType}`);
             return false;
         }
         
         if (!translatorConfig.enabled) {
-            console.log(`Field type ${fieldType} is disabled, skipping`);
+            console.log(`⏭️ Field type ${fieldType} is disabled, skipping`);
             return false;
         }
         
         // Validate field data
         if (!validateFieldData(fieldData, fieldType)) {
-            console.warn(`Invalid field data for ${fieldType}:`, fieldData);
+            console.warn(`❌ Invalid field data for ${fieldType}:`, fieldData);
             return false;
         }
         
-        // Translate coordinates from DocuSign to PDF
-        const pdfCoords = convertDocuSignCoordinates(fieldData, page);
+        // DEBUG: Log validation success
+        console.log(`✅ Field validation passed for ${fieldType}`);
+        
+        // Use the same coordinate conversion as the main converter for consistency
+        const pageSize = page.getSize();
+        
+        // Check if we have pre-calculated coordinates from the main converter
+        let pdfCoords;
+        if (options.rect && options.rect.llx !== undefined) {
+            // Use the pre-calculated coordinates from the main converter
+            pdfCoords = options.rect;
+            console.log(`📐 USING PRE-CALCULATED COORDINATES:`, {
+                fieldType: fieldType,
+                rect: options.rect,
+                source: 'main_converter',
+                rectDetails: {
+                    llx: options.rect.llx,
+                    lly: options.rect.lly,
+                    urx: options.rect.urx,
+                    ury: options.rect.ury,
+                    width: options.rect.urx - options.rect.llx,
+                    height: options.rect.ury - options.rect.lly
+                }
+            });
+        } else {
+            // Fall back to manual coordinate conversion
+            const x = parseFloat(fieldData.xPosition || fieldData.xPositionString || 0);
+            const y = parseFloat(fieldData.yPosition || fieldData.yPositionString || 0);
+            
+            // Set appropriate default dimensions based on field type
+            let defaultWidth, defaultHeight;
+            if (fieldType === 'checkboxTabs') {
+                defaultWidth = 12;  // Checkboxes should be small and square
+                defaultHeight = 12;
+            } else if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+                defaultWidth = 120; // Signature fields need more space
+                defaultHeight = 20;
+            } else {
+                defaultWidth = 120; // Default for text fields
+                defaultHeight = 20;
+            }
+            
+            const width = parseFloat(fieldData.width || fieldData.widthString || defaultWidth);
+            const height = parseFloat(fieldData.height || fieldData.heightString || defaultHeight);
+            
+            // DEBUG: Log coordinate conversion
+            console.log(`📐 COORDINATE CONVERSION:`, {
+                fieldType: fieldType,
+                originalCoords: {
+                    x: fieldData.xPosition,
+                    y: fieldData.yPosition,
+                    width: fieldData.width,
+                    height: fieldData.height
+                },
+                parsedCoords: { x, y, width, height },
+                defaultDimensions: { defaultWidth, defaultHeight },
+                pageSize: pageSize
+            });
+            
+            // Additional debug for checkboxes specifically
+            if (fieldType === 'checkboxTabs') {
+                console.log(`🔍 CHECKBOX DEBUG:`, {
+                    fieldData: fieldData,
+                    xPosition: fieldData.xPosition,
+                    yPosition: fieldData.yPosition,
+                    width: fieldData.width,
+                    height: fieldData.height,
+                    parsedWidth: width,
+                    parsedHeight: height,
+                    defaultWidth: defaultWidth,
+                    defaultHeight: defaultHeight,
+                    finalWidth: width,
+                    finalHeight: height
+                });
+            }
+            
+            // Convert from DocuSign coordinates (top-left origin) to PDF coordinates (bottom-left origin)
+            pdfCoords = {
+                llx: x,
+                lly: pageSize.height - (y + height),
+                urx: x + width,
+                ury: pageSize.height - y
+            };
+        }
+        
+        // DEBUG: Log final coordinates
+        console.log(`🎯 FINAL PDF COORDINATES:`, {
+            fieldType: fieldType,
+            pdfCoords: pdfCoords,
+            pageSize: pageSize
+        });
+        
+        // Debug coordinate conversion for signature fields
+        if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+            console.log(`📐 Coordinate conversion for ${fieldType}:`, {
+                original: {
+                    xPosition: fieldData.xPosition,
+                    yPosition: fieldData.yPosition,
+                    width: fieldData.width,
+                    height: fieldData.height
+                },
+                converted: pdfCoords,
+                pageSize: pageSize
+            });
+        }
+        
+        // DEBUG: Log field creation attempt
+        console.log(`🏗️ CALLING FIELD CREATOR:`, {
+            fieldType: fieldType,
+            translatorFunction: translatorConfig.translator.name,
+            fieldData: {
+                tabLabel: fieldData.tabLabel,
+                name: fieldData.name,
+                stampType: fieldData.stampType,
+                tabType: fieldData.tabType
+            },
+            coordinates: pdfCoords
+        });
         
         // Call the specific translator
         const result = await translatorConfig.translator(fieldData, pdfDoc, page, pdfCoords, options);
         
+        // DEBUG: Log field creation result
+        console.log(`📊 FIELD CREATION RESULT:`, {
+            fieldType: fieldType,
+            fieldName: fieldData.tabLabel || fieldData.name || 'unnamed',
+            success: result,
+            translatorFunction: translatorConfig.translator.name
+        });
+        
         if (result) {
-            console.log(`✓ Translated ${translatorConfig.name}: ${fieldData.tabLabel || fieldData.name || 'unnamed'}`);
+            console.log(`✅ Successfully translated ${fieldType} field: ${fieldData.tabLabel || fieldData.name || 'unnamed'}`);
+        } else {
+            console.warn(`❌ Failed to translate ${fieldType} field: ${fieldData.tabLabel || fieldData.name || 'unnamed'}`);
         }
         
         return result;
@@ -206,43 +353,39 @@ function validateFieldData(fieldData, fieldType) {
  * @param {PDFPage} page - The PDF page
  * @returns {Object} - PDF coordinates {llx, lly, urx, ury}
  */
-function convertDocuSignCoordinates(fieldData, page) {
-    const x = parseFloat(fieldData.xPosition || 0);
-    const y = parseFloat(fieldData.yPosition || 0);
-    const width = parseFloat(fieldData.width || 0);
-    const height = parseFloat(fieldData.height || 0);
+function convertDocuSignCoordinates(fieldData, page, fieldType = 'textTabs') {
+    // Use the same logic as getTabRectangle() from converter.js for consistency
+    const x = parseFloat(fieldData.xPosition || fieldData.xPositionString || 0);
+    const y = parseFloat(fieldData.yPosition || fieldData.yPositionString || 0);
+    
+    // Set appropriate default dimensions based on field type
+    let defaultWidth, defaultHeight;
+    if (fieldType === 'checkboxTabs') {
+        defaultWidth = 12;  // Checkboxes should be small and square
+        defaultHeight = 12;
+    } else if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+        defaultWidth = 120; // Signature fields need more space
+        defaultHeight = 20;
+    } else {
+        defaultWidth = 120; // Default for text fields
+        defaultHeight = 20;
+    }
+    
+    const width = parseFloat(fieldData.width || fieldData.widthString || defaultWidth);
+    const height = parseFloat(fieldData.height || fieldData.heightString || defaultHeight);
     
     // Get page dimensions
     const pageSize = page.getSize();
     const pageHeight = pageSize.height;
     
-    // Determine field type for appropriate minimum sizing
-    const fieldType = fieldData.tabType || fieldData.type || 'text';
-    let minWidth = 50;  // Default minimum width
-    let minHeight = 15; // Default minimum height
-    
-    // Set appropriate minimum sizes based on field type
-    if (fieldType.includes('checkbox')) {
-        minWidth = 15;   // Checkboxes should be square-ish
-        minHeight = 15;
-    } else if (fieldType.includes('radio')) {
-        minWidth = 15;   // Radio buttons should be square-ish
-        minHeight = 15;
-    } else if (fieldType.includes('signature') || fieldType.includes('initial')) {
-        minWidth = 100;  // Signatures need more space
-        minHeight = 30;
-    } else if (fieldType.includes('list') || fieldType.includes('dropdown')) {
-        minWidth = 80;   // Dropdowns need reasonable width
-        minHeight = 20;
-    }
-    
     // Convert DocuSign (top-left origin) to PDF (bottom-left origin)
+    // This matches the logic in getTabRectangle() from converter.js
     const pdfX = x;
-    const pdfY = pageHeight - (y + Math.max(height, minHeight)); // Use appropriate minimum height
-    const pdfWidth = Math.max(width, minWidth); // Use appropriate minimum width
-    const pdfHeight = Math.max(height, minHeight); // Use appropriate minimum height
+    const pdfY = pageHeight - (y + height);
+    const pdfWidth = width;
+    const pdfHeight = height;
     
-    console.log(`Coordinate conversion for ${fieldType}:`, {
+    console.log(`Coordinate conversion:`, {
         original: { x, y, width, height },
         converted: { pdfX, pdfY, pdfWidth, pdfHeight },
         pageHeight: pageHeight
@@ -324,12 +467,82 @@ async function translateSignatureField(fieldData, pdfDoc, page, coords, options)
     try {
         const fieldName = generateFieldName(fieldData);
         
-        // Use the optimized signature field creation
-        await createOptimizedSignatureField(pdfDoc, page, fieldName, coords, 'signature');
+        console.log(`🎯 translateSignatureField called:`, {
+            fieldName: fieldName,
+            coords: coords,
+            fieldData: {
+                tabLabel: fieldData.tabLabel,
+                name: fieldData.name,
+                xPosition: fieldData.xPosition,
+                yPosition: fieldData.yPosition
+            }
+        });
         
+        // DEBUG: Check if the function is available
+        if (typeof window.createSignatureField !== 'function') {
+            console.error('❌ createSignatureField function is not available!');
+            return false;
+        }
+        
+        console.log(`🔧 Calling createSignatureField with:`, {
+            fieldName: fieldName,
+            coords: coords,
+            fieldType: 'signature'
+        });
+        
+        // Use the unified signature field creation from converter.js
+        await window.createSignatureField(pdfDoc, page, fieldName, coords, 'signature');
+        
+        console.log(`✅ translateSignatureField completed successfully for: ${fieldName}`);
         return true;
     } catch (error) {
-        console.error('Failed to translate signature field:', error);
+        console.error('❌ Failed to translate signature field:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            fieldName: fieldName,
+            coords: coords,
+            fieldData: fieldData
+        });
+        return false;
+    }
+}
+
+/**
+ * Translates DocuSign stamp fields to PDF AcroForm signature fields
+ * Stamps are treated as electronic signatures but use a separate function for future flexibility
+ * 
+ * @param {Object} fieldData - DocuSign field data
+ * @param {PDFDocument} pdfDoc - PDF document
+ * @param {PDFPage} page - PDF page
+ * @param {Object} coords - PDF coordinates
+ * @param {Object} options - Translation options
+ * @returns {Promise<boolean>} - Success status
+ */
+async function translateStampField(fieldData, pdfDoc, page, coords, options) {
+    try {
+        const fieldName = generateFieldName(fieldData);
+        
+        console.log(`🖋️ translateStampField called:`, {
+            fieldName: fieldName,
+            coords: coords,
+            fieldData: {
+                tabLabel: fieldData.tabLabel,
+                name: fieldData.name,
+                xPosition: fieldData.xPosition,
+                yPosition: fieldData.yPosition,
+                stampType: fieldData.stampType
+            }
+        });
+        
+        // Use the same signature field creation logic as regular signatures
+        // This allows for future customization of stamp-specific behavior
+        await window.createSignatureField(pdfDoc, page, fieldName, coords, 'signature');
+        
+        console.log(`✅ Stamp field created successfully: ${fieldName}`);
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to translate stamp field:', error);
         return false;
     }
 }
@@ -348,8 +561,8 @@ async function translateInitialsField(fieldData, pdfDoc, page, coords, options) 
     try {
         const fieldName = generateFieldName(fieldData);
         
-        // Use the optimized signature field creation with initials type
-        await createOptimizedSignatureField(pdfDoc, page, fieldName, coords, 'initials');
+        // Use the unified signature field creation with initials type
+        await window.createSignatureField(pdfDoc, page, fieldName, coords, 'initials');
         
         return true;
     } catch (error) {
@@ -382,6 +595,14 @@ async function translateCheckboxField(fieldData, pdfDoc, page, coords, options) 
             width: coords.urx - coords.llx,
             height: coords.ury - coords.lly,
             fieldName: fieldName
+        });
+        
+        // Additional debug for checkbox coordinates
+        console.log(`🔍 CHECKBOX COORDS DEBUG:`, {
+            coords: coords,
+            calculatedWidth: coords.urx - coords.llx,
+            calculatedHeight: coords.ury - coords.lly,
+            fieldData: fieldData
         });
         
         // Use coordinates as provided (minimum sizing handled in coordinate conversion)
@@ -446,7 +667,7 @@ async function translateRadioGroupField(fieldData, pdfDoc, page, coords, options
         // Add each radio button option using correct API
         for (let i = 0; i < radios.length; i++) {
             const radio = radios[i];
-            const radioCoords = convertDocuSignCoordinates(radio, page);
+            const radioCoords = convertDocuSignCoordinates(radio, page, 'radioGroupTabs');
             
             // Ensure value is a string
             let radioValue = radio.value || radio.text || `option_${i}`;
@@ -814,115 +1035,8 @@ async function translateSignerAttachmentField(fieldData, pdfDoc, page, coords, o
 // FIELD CREATION FUNCTIONS
 // ============================================================================
 
-/**
- * Create optimized electronic signature field
- * 
- * This function creates a proper electronic signature field that works with Adobe's
- * "Fill & Sign" feature, allowing users to draw, type, or upload signatures.
- * 
- * @param {PDFDocument} pdfDoc - The PDF document
- * @param {PDFPage} page - The page to add the field to
- * @param {string} name - The field name
- * @param {Object} rect - The field rectangle
- * @param {string} fieldType - Type of field ('signature' or 'initials')
- * @returns {Promise<boolean>} - Success status
- */
-async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType = 'signature') {
-    try {
-        const isInitials = fieldType === 'initials';
-        const fieldTypeLabel = isInitials ? 'initials' : 'signature';
-        console.log(`Creating optimized electronic ${fieldTypeLabel} field: ${name}`);
-        
-        // STEP 1: Clean and validate the field name
-        let cleanName = name;
-        if (!cleanName || typeof cleanName !== 'string') {
-            cleanName = `${fieldTypeLabel}_${Date.now()}`;
-        }
-        cleanName = cleanName.replace(/[^a-zA-Z0-9_-]/g, '_');
-        
-        // Ensure uniqueness by adding timestamp and random string
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substr(2, 5);
-        cleanName = `${cleanName}_${timestamp}_${random}`.substring(0, 60);
-        
-        // STEP 2: Calculate field dimensions based on type
-        const minWidth = isInitials ? 100 : 150;   // Initials: 100pts, Signatures: 150pts
-        const minHeight = isInitials ? 25 : 40;    // Initials: 25pts, Signatures: 40pts
-        const width = Math.max(rect.urx - rect.llx, minWidth);
-        const height = Math.max(rect.ury - rect.lly, minHeight);
-        
-        // STEP 3: Create field rectangle array (used in multiple places)
-        const fieldRect = pdfDoc.context.obj([
-            PDFLib.PDFNumber.of(rect.llx),
-            PDFLib.PDFNumber.of(rect.lly),
-            PDFLib.PDFNumber.of(rect.llx + width),
-            PDFLib.PDFNumber.of(rect.lly + height)
-        ]);
-        
-        // STEP 4: Create field dictionary with proper electronic signature properties
-        const fieldDict = pdfDoc.context.obj({
-            Type: 'Annot',
-            Subtype: 'Widget',
-            Rect: fieldRect,
-            FT: 'Sig',                    // Field type: Signature
-            T: cleanName,                 // Field name
-            F: 4,                         // Field flags: Print
-            Ff: 0,                        // Field flags: Allow electronic signatures (no digital certificate required)
-            V: pdfDoc.context.obj({}),    // Field value (empty initially)
-            AS: pdfDoc.context.obj({}),   // Appearance state (empty initially)
-            MK: pdfDoc.context.obj({      // Appearance characteristics
-                BC: [0, 0, 0],            // Border color: black
-                BG: [1, 1, 1]             // Background color: white
-            }),
-            DA: `/Helv 12 Tf 0 0 0 rg`,  // Default appearance: Helvetica 12pt black
-            BS: pdfDoc.context.obj({      // Border style
-                Type: 'Border',
-                W: 1,                     // Border width: 1 point
-                S: 'S'                    // Border style: Solid
-            })
-        });
-        
-        // STEP 5: Add field to form
-        const form = pdfDoc.getForm();
-        const formDict = form.dict;
-        
-        // Get or create Fields array
-        let fieldsArray = formDict.get('Fields');
-        if (!fieldsArray) {
-            fieldsArray = pdfDoc.context.obj([]);
-            formDict.set('Fields', fieldsArray);
-        }
-        
-        // Add field reference to Fields array
-        fieldsArray.push(fieldDict);
-        
-        // STEP 6: Add widget annotation to page
-        const pageDict = page.node;
-        let annotsArray = pageDict.get('Annots');
-        if (!annotsArray) {
-            annotsArray = pdfDoc.context.obj([]);
-            pageDict.set('Annots', annotsArray);
-        }
-        
-        // Add widget annotation
-        annotsArray.push(fieldDict);
-        
-        // STEP 7: Update field appearances to ensure proper rendering
-        try {
-            form.updateFieldAppearances();
-            console.log(`✓ Updated field appearances for ${fieldTypeLabel} field`);
-        } catch (error) {
-            console.warn(`Failed to update field appearances for ${fieldTypeLabel} field:`, error);
-        }
-        
-        console.log(`✓ Successfully created optimized electronic ${fieldTypeLabel} field: ${cleanName}`);
-        return true;
-        
-    } catch (error) {
-        console.error(`Failed to create optimized ${fieldType} field "${name}":`, error);
-        return false;
-    }
-}
+// Note: createSignatureField is defined in converter.js
+// This ensures consistent field creation across the entire system
 
 // ============================================================================
 // UTILITY FUNCTIONS

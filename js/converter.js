@@ -4,13 +4,39 @@
  * using the PDF-lib library for client-side processing.
  */
 
-// Constants for PDF conversion
-const DEFAULT_FONT_NAME = 'Helvetica';
-const DEFAULT_TEXT_FIELD_WIDTH = 120;
-const DEFAULT_TEXT_FIELD_HEIGHT = 20;
-const DEFAULT_HEADER_MASK_HEIGHT = 24.0;
-const DEFAULT_FONT_SIZE = 12;
-const DEFAULT_BORDER_STYLE = 'underlined';
+// Configuration object for PDF conversion
+const CONVERSION_CONFIG = {
+    // Default field dimensions
+    fieldDimensions: {
+        text: { width: 120, height: 20 },
+        checkbox: { width: 12, height: 12 },
+        signature: { width: 120, height: 20 },
+        initials: { width: 100, height: 25 },
+        date: { width: 120, height: 20 }
+    },
+    
+    // Default styling
+    styling: {
+        fontName: 'Helvetica',
+        fontSize: 12,
+        borderStyle: 'underlined',
+        headerMaskHeight: 24.0
+    },
+    
+    // Field validation
+    validation: {
+        minFieldWidth: 10,
+        minFieldHeight: 10,
+        maxFieldNameLength: 60
+    },
+    
+    // System tab filtering
+    systemTabPatterns: [
+        /^\d+_\d+$/, // Pattern like "70081311_237"
+        /system/i,
+        /hidden/i
+    ]
+};
 
 /**
  * Determine DocuSign field type from tab data
@@ -20,10 +46,22 @@ const DEFAULT_BORDER_STYLE = 'underlined';
  */
 function determineFieldType(tab) {
     const tabType = (tab.tabType || tab.type || '').toLowerCase();
+    const stampType = (tab.stampType || '').toLowerCase();
     
     // Map DocuSign field types to our translation system
     // NOTE: Order matters! More specific checks must come before general ones
     
+    // PRIORITY 1: Check stampType for signature fields (most reliable identifier)
+    if (stampType === 'signature') {
+        return 'signHereTabs';
+    } else if (stampType === 'initials') {
+        return 'initialHereTabs';
+    } else if (stampType === 'stamp') {
+        // Stamps are also electronic signatures but use separate field type for future flexibility
+        return 'stampTabs';
+    }
+    
+    // PRIORITY 2: Check tabType for other field types
     // Check for attachment fields FIRST (before signature fields)
     // This prevents "signerattachment" from being caught by the "sign" check below
     if (tabType === 'signerattachment' || tabType.includes('attachment')) {
@@ -109,6 +147,25 @@ function updateFieldTypeCount(fieldType, counters) {
  */
 async function convertDocuSignToPDF(templateData, options = {}) {
     try {
+        // Input validation
+        if (!templateData || typeof templateData !== 'object') {
+            throw new Error('Invalid template data: Expected an object');
+        }
+        
+        if (!templateData.documents || !Array.isArray(templateData.documents)) {
+            throw new Error('Invalid template data: Missing or invalid documents array');
+        }
+        
+        console.log('🚀 Starting DocuSign to PDF conversion...');
+        
+        // DEBUG: Log template analysis
+        console.log('📊 TEMPLATE ANALYSIS:', {
+            templateId: templateData.templateId,
+            templateName: templateData.name,
+            documentCount: templateData.documents ? templateData.documents.length : 0,
+            recipientCount: templateData.recipients ? Object.keys(templateData.recipients).length : 0
+        });
+        
         // Extract documents from the template
         const documents = templateData.documents || [];
         if (documents.length === 0) {
@@ -120,7 +177,7 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         // Decode and process each document
         const pdfDocs = [];
         for (const doc of documents) {
-            const docId = doc.documentId;
+            const docId = String(doc.documentId); // Ensure consistent string type for document IDs
             const base64Data = doc.documentBase64 || doc.documentBase64Bytes;
             
             if (!base64Data) {
@@ -180,6 +237,13 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         // Process each tab and add form fields
         for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i];
+            
+            // Validate tab data
+            if (!tab || typeof tab !== 'object') {
+                console.warn(`Invalid tab data at index ${i}, skipping`);
+                continue;
+            }
+            
             const tabType = (tab.tabType || tab.type || '').toLowerCase();
             const docId = tab.documentId ? String(tab.documentId) : null;
             const pageNumber = parseInt(tab.pageNumber || tab.page || 1);
@@ -188,7 +252,24 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             const pageMappingEntry = pageMapping.find(mapping => mapping.docId === docId);
             if (!pageMappingEntry) {
                 console.warn(`No page mapping found for document ID ${docId}`);
+                console.warn(`Available document IDs: [${pageMapping.map(m => m.docId).join(', ')}]`);
+                console.warn(`Skipping field: ${tab.tabLabel || tab.name || 'unnamed'} (${tabType})`);
                 continue;
+            }
+
+            // Enhanced logging for signature fields to debug the issue
+            if (tabType === 'signhere' || tabType === 'initialhere') {
+                console.log(`🔍 Processing ${tabType} field:`, {
+                    fieldName: tab.tabLabel || tab.name,
+                    docId: docId,
+                    pageNumber: pageNumber,
+                    pageMappingEntry: pageMappingEntry,
+                    xPosition: tab.xPosition,
+                    yPosition: tab.yPosition,
+                    stampType: tab.stampType,
+                    tabType: tab.tabType,
+                    detectedBy: tab.stampType ? 'stampType' : 'tabType'
+                });
             }
 
             const absolutePageIndex = pageMappingEntry.startPage + Math.max(0, pageNumber - 1);
@@ -221,11 +302,8 @@ async function convertDocuSignToPDF(templateData, options = {}) {
             // 3. Skip tabs that appear to be at origin AND have no meaningful content
             const isVerySmall = (width <= 1 && height <= 1);
             const isAtOrigin = (x === 0 && y === 0);
-            const hasSystemName = tab.tabLabel && (
-                tab.tabLabel.includes('_') && 
-                /^\d+_\d+$/.test(tab.tabLabel) || // Pattern like "70081311_237"
-                tab.tabLabel.toLowerCase().includes('system') ||
-                tab.tabLabel.toLowerCase().includes('hidden')
+            const hasSystemName = tab.tabLabel && CONVERSION_CONFIG.systemTabPatterns.some(pattern => 
+                pattern.test(tab.tabLabel)
             );
             const hasNoContent = !tab.value && !tab.defaultValue && !tab.text;
             
@@ -247,7 +325,44 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         // Use the translation system to process the field
         const fieldType = determineFieldType(tab);
         
+        // DEBUG: Log field type determination
+        console.log(`🔍 FIELD TYPE DETERMINATION:`, {
+            tabLabel: tab.tabLabel,
+            tabType: tab.tabType,
+            stampType: tab.stampType,
+            determinedFieldType: fieldType,
+            xPosition: tab.xPosition,
+            yPosition: tab.yPosition
+        });
+        
         if (fieldType) {
+            // DEBUG: Log field processing start
+            console.log(`🚀 STARTING FIELD PROCESSING:`, {
+                fieldType: fieldType,
+                fieldName: fieldName,
+                coordinates: rect,
+                tabData: {
+                    tabLabel: tab.tabLabel,
+                    name: tab.name,
+                    xPosition: tab.xPosition,
+                    yPosition: tab.yPosition,
+                    stampType: tab.stampType,
+                    tabType: tab.tabType
+                }
+            });
+            
+            // Check if this is a signature field and log special handling
+            if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+                console.log(`🎯 PROCESSING SIGNATURE FIELD:`, {
+                    fieldType: fieldType,
+                    fieldName: fieldName,
+                    isSignatureField: true,
+                    coordinates: rect,
+                    stampType: tab.stampType,
+                    tabType: tab.tabType
+                });
+            }
+            
             // Use the field translation system
             const success = await translateField(fieldType, tab, mergedPdf, page, {
                 ...options,
@@ -256,13 +371,43 @@ async function convertDocuSignToPDF(templateData, options = {}) {
                 defaultValue: defaultValue
             });
             
+            // DEBUG: Log field processing result
+            console.log(`📊 FIELD PROCESSING RESULT:`, {
+                fieldType: fieldType,
+                fieldName: fieldName,
+                success: success,
+                isSignatureField: fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs'
+            });
+            
             if (success) {
                 updateFieldTypeCount(fieldType, fieldTypeCounts);
+                if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+                    console.log(`✅ Successfully created signature field: ${fieldName} at (${tab.xPosition}, ${tab.yPosition}) on document ${docId}`);
+                }
             } else {
-                console.warn(`Failed to translate ${fieldType} field:`, fieldName);
+                console.warn(`❌ Failed to translate ${fieldType} field:`, fieldName);
+                if (fieldType === 'signHereTabs' || fieldType === 'initialHereTabs' || fieldType === 'stampTabs') {
+                    console.error(`🚨 SIGNATURE FIELD FAILED:`, {
+                        fieldName: fieldName,
+                        fieldType: fieldType,
+                        tab: tab,
+                        coordinates: rect,
+                        error: 'Field translation returned false'
+                    });
+                }
                 fieldTypeCounts.other++;
             }
         } else {
+            // DEBUG: Log unknown field type
+            console.log(`❓ UNKNOWN FIELD TYPE:`, {
+                tabLabel: tab.tabLabel,
+                tabType: tab.tabType,
+                stampType: tab.stampType,
+                xPosition: tab.xPosition,
+                yPosition: tab.yPosition,
+                reason: 'determineFieldType returned null'
+            });
+            
             // Fallback to text field for unknown types
             await createTextField(mergedPdf, page, fieldName, rect, defaultValue, options);
             fieldTypeCounts.other++;
@@ -341,8 +486,66 @@ function getTabRectangle(tab, pageSize, options = {}) {
     try {
         const x = parseFloat(tab.xPosition || tab.xPositionString || 0);
         const y = parseFloat(tab.yPosition || tab.yPositionString || 0);
-        const width = parseFloat(tab.width || tab.widthString || options.fieldWidth || DEFAULT_TEXT_FIELD_WIDTH);
-        const height = parseFloat(tab.height || tab.heightString || options.fieldHeight || DEFAULT_TEXT_FIELD_HEIGHT);
+        
+        // Determine field type to set appropriate default dimensions
+        const fieldType = determineFieldType(tab);
+        let defaultWidth, defaultHeight;
+        
+        // Get dimensions from configuration
+        if (fieldType === 'checkboxTabs') {
+            defaultWidth = CONVERSION_CONFIG.fieldDimensions.checkbox.width;
+            defaultHeight = CONVERSION_CONFIG.fieldDimensions.checkbox.height;
+        } else if (fieldType === 'signHereTabs' || fieldType === 'stampTabs') {
+            defaultWidth = CONVERSION_CONFIG.fieldDimensions.signature.width;
+            defaultHeight = CONVERSION_CONFIG.fieldDimensions.signature.height;
+        } else if (fieldType === 'initialHereTabs') {
+            defaultWidth = CONVERSION_CONFIG.fieldDimensions.initials.width;
+            defaultHeight = CONVERSION_CONFIG.fieldDimensions.initials.height;
+        } else if (fieldType === 'dateSignedTabs') {
+            defaultWidth = CONVERSION_CONFIG.fieldDimensions.date.width;
+            defaultHeight = CONVERSION_CONFIG.fieldDimensions.date.height;
+        } else {
+            defaultWidth = options.fieldWidth || CONVERSION_CONFIG.fieldDimensions.text.width;
+            defaultHeight = options.fieldHeight || CONVERSION_CONFIG.fieldDimensions.text.height;
+        }
+        
+        // Parse width and height, but use defaults if the parsed value is 0 or NaN
+        const parsedWidth = parseFloat(tab.width || tab.widthString || 0);
+        const parsedHeight = parseFloat(tab.height || tab.heightString || 0);
+        const width = (parsedWidth > 0) ? parsedWidth : defaultWidth;
+        const height = (parsedHeight > 0) ? parsedHeight : defaultHeight;
+        
+        // Debug the width/height calculation
+        if (fieldType === 'checkboxTabs') {
+            console.log(`🔧 WIDTH/HEIGHT CALCULATION:`, {
+                tabWidth: tab.width,
+                tabWidthString: tab.widthString,
+                tabHeight: tab.height,
+                tabHeightString: tab.heightString,
+                defaultWidth: defaultWidth,
+                defaultHeight: defaultHeight,
+                parsedWidth: parsedWidth,
+                parsedHeight: parsedHeight,
+                finalWidth: width,
+                finalHeight: height,
+                widthLogic: `(${parsedWidth} > 0) ? ${parsedWidth} : ${defaultWidth}`,
+                heightLogic: `(${parsedHeight} > 0) ? ${parsedHeight} : ${defaultHeight}`
+            });
+        }
+        
+        // Debug logging for checkbox dimensions
+        if (fieldType === 'checkboxTabs') {
+            console.log(`🔧 CHECKBOX DIMENSIONS IN getTabRectangle:`, {
+                tabLabel: tab.tabLabel,
+                originalWidth: tab.width,
+                originalHeight: tab.height,
+                defaultWidth: defaultWidth,
+                defaultHeight: defaultHeight,
+                finalWidth: width,
+                finalHeight: height,
+                fieldType: fieldType
+            });
+        }
         
         // Convert from DocuSign coordinates (top-left origin) to PDF coordinates (bottom-left origin)
         const llx = x;
@@ -350,7 +553,20 @@ function getTabRectangle(tab, pageSize, options = {}) {
         const urx = x + width;
         const ury = pageSize.height - y;
         
-        return { llx, lly, urx, ury };
+        const rect = { llx, lly, urx, ury };
+        
+        // Debug logging for checkbox final rectangle
+        if (fieldType === 'checkboxTabs') {
+            console.log(`🔧 CHECKBOX FINAL RECTANGLE:`, {
+                tabLabel: tab.tabLabel,
+                rect: rect,
+                calculatedWidth: urx - llx,
+                calculatedHeight: ury - lly,
+                pageSize: pageSize
+            });
+        }
+        
+        return rect;
     } catch (error) {
         console.warn('Invalid tab coordinates:', error);
         return null;
@@ -423,7 +639,7 @@ async function createTextField(pdfDoc, page, name, rect, defaultValue = '', opti
  * @param {number} pageNumber - The page number
  */
 /**
- * Optimized signature field creation using direct PDF manipulation
+ * Unified signature field creation using direct PDF manipulation
  * 
  * This function creates Adobe Fill & Sign signature fields (both full signatures and initials) that allow users to:
  * - Draw signatures/initials using mouse/touch
@@ -445,7 +661,7 @@ async function createTextField(pdfDoc, page, name, rect, defaultValue = '', opti
  * @param {Object} rect - The rectangle coordinates {llx, lly, urx, ury}
  * @param {'signature'|'initials'} fieldType - Type of field to create (determines size and styling)
  */
-async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType = 'signature') {
+async function createSignatureField(pdfDoc, page, name, rect, fieldType = 'signature') {
     try {
         const isInitials = fieldType === 'initials';
         const fieldTypeLabel = isInitials ? 'initials' : 'signature';
@@ -458,11 +674,27 @@ async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType
         }
         cleanName = cleanName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
         
+        console.log(`🔧 STEP 1 - Field name processing:`, {
+            originalName: name,
+            cleanName: cleanName,
+            fieldType: fieldType,
+            fieldTypeLabel: fieldTypeLabel
+        });
+        
         // STEP 2: Calculate field dimensions based on type
-        const minWidth = isInitials ? 100 : 150;   // Initials: 100pts, Signatures: 150pts
-        const minHeight = isInitials ? 25 : 40;    // Initials: 25pts, Signatures: 40pts
+        // Use the same minimum dimensions as the coordinate conversion for consistency
+        const minWidth = isInitials ? 100 : 120;   // Initials: 100pts, Signatures: 120pts (matches coordinate conversion)
+        const minHeight = isInitials ? 25 : 20;    // Initials: 25pts, Signatures: 20pts (matches coordinate conversion)
         const width = Math.max(rect.urx - rect.llx, minWidth);
         const height = Math.max(rect.ury - rect.lly, minHeight);
+        
+        console.log(`🔧 STEP 2 - Field dimensions:`, {
+            rect: rect,
+            minWidth: minWidth,
+            minHeight: minHeight,
+            calculatedWidth: width,
+            calculatedHeight: height
+        });
         
         // STEP 3: Create field rectangle array (used in multiple places)
         const fieldRect = pdfDoc.context.obj([
@@ -471,6 +703,14 @@ async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType
             PDFLib.PDFNumber.of(rect.llx + width),
             PDFLib.PDFNumber.of(rect.lly + height)
         ]);
+        
+        console.log(`🔧 STEP 3 - Field rectangle created:`, {
+            fieldRect: fieldRect,
+            llx: rect.llx,
+            lly: rect.lly,
+            urx: rect.llx + width,
+            ury: rect.lly + height
+        });
         
         // STEP 4: Create appearance characteristics based on type
         const bgColor = isInitials ? [0.97, 0.97, 0.97] : [0.95, 0.95, 0.95]; // Lighter for initials
@@ -532,17 +772,52 @@ async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType
         
         // STEP 9: Register and attach the widget annotation
         const widgetRef = pdfDoc.context.register(widgetDict);
-        const annots = page.node.get(PDFLib.PDFName.of('Annots'));
-        if (annots) {
-            annots.push(widgetRef);
-        } else {
+        
+        // Handle annotations array properly - it might be a PDFRef or PDFArray
+        let annots = page.node.get(PDFLib.PDFName.of('Annots'));
+        console.log(`🔧 STEP 4 - Annotations handling:`, {
+            annotsExists: !!annots,
+            annotsType: annots ? annots.constructor.name : 'undefined',
+            isPDFRef: annots instanceof PDFLib.PDFRef,
+            widgetRef: widgetRef
+        });
+        
+        if (!annots) {
+            // Create new annotations array if none exists
+            console.log(`📝 Creating new annotations array`);
             page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj([widgetRef]));
+        } else {
+            // If it's a reference, get the actual array
+            if (annots instanceof PDFLib.PDFRef) {
+                console.log(`🔗 Looking up PDFRef annotations`);
+                annots = pdfDoc.context.lookup(annots);
+            }
+            
+            // Ensure annots is a mutable array by creating a new one
+            const existingAnnots = [];
+            if (annots && annots.size && annots.size() > 0) {
+                console.log(`📋 Copying ${annots.size()} existing annotations`);
+                for (let i = 0; i < annots.size(); i++) {
+                    existingAnnots.push(annots.get(i));
+                }
+            }
+            existingAnnots.push(widgetRef);
+            console.log(`📝 Setting annotations array with ${existingAnnots.length} items`);
+            page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj(existingAnnots));
         }
         
         console.log(`✓ Successfully created optimized electronic ${fieldTypeLabel} field: ${cleanName}`);
         
     } catch (error) {
         console.error(`Failed to create optimized ${fieldType} field "${name}":`, error);
+        console.error(`Error details:`, {
+            errorType: typeof error,
+            errorMessage: error?.message || 'No message',
+            errorStack: error?.stack || 'No stack',
+            fieldName: name,
+            fieldType: fieldType,
+            rect: rect
+        });
         // Fall back to styled text field if signature field creation fails
         await createSignatureFieldFallback(pdfDoc, page, name, rect);
     }
@@ -550,16 +825,55 @@ async function createOptimizedSignatureField(pdfDoc, page, name, rect, fieldType
 
 // Convenience functions for backward compatibility and clarity
 async function createWorkingSignatureField(pdfDoc, page, name, rect) {
-    return createOptimizedSignatureField(pdfDoc, page, name, rect, 'signature');
+    return createSignatureField(pdfDoc, page, name, rect, 'signature');
 }
 
 async function createWorkingInitialsField(pdfDoc, page, name, rect) {
-    return createOptimizedSignatureField(pdfDoc, page, name, rect, 'initials');
+    return createSignatureField(pdfDoc, page, name, rect, 'initials');
 }
 
-async function createWorkingSignatureField(pdfDoc, page, name, rect) {
+/**
+ * Creates a working electronic initials field using direct PDF manipulation
+ * 
+ * This function creates Adobe Fill & Sign signature fields specifically optimized for initials that allow users to:
+ * - Draw initials using mouse/touch
+ * - Upload initials images
+ * - Type initials in signature fonts
+ * - Use Adobe's built-in signature tools
+ * 
+ * DIFFERENCES FROM FULL SIGNATURE FIELDS:
+ * =====================================
+ * 
+ * 1. SIZE OPTIMIZATION:
+ *    - Smaller minimum dimensions (100x25 points vs 150x40 for signatures)
+ *    - Optimized for initials rather than full signatures
+ *    - More compact appearance suitable for initial placement
+ * 
+ * 2. STYLING DIFFERENCES:
+ *    - Slightly different border styling (thinner border)
+ *    - Different background color (slightly lighter)
+ *    - Optimized for initials visibility
+ * 
+ * 3. BEHAVIOR:
+ *    - Same Adobe Fill & Sign functionality as signature fields
+ *    - Users can draw, upload, or type initials
+ *    - Adobe recognizes it as a signature field (no separate initials field type in PDF spec)
+ * 
+ * HOW IT WORKS:
+ * =============
+ * 
+ * Uses the same PDF structure as signature fields but with initials-optimized dimensions and styling.
+ * Adobe AcroForms doesn't have a separate "initials" field type, so we use signature fields
+ * with appropriate sizing and styling to create the initials experience.
+ * 
+ * @param {PDFDocument} pdfDoc - The PDF document to add the initials field to
+ * @param {PDFPage} page - The PDF page where the initials field will be placed
+ * @param {string} name - The name of the initials field
+ * @param {Object} rect - The rectangle coordinates {llx, lly, urx, ury}
+ */
+async function createWorkingInitialsField(pdfDoc, page, name, rect) {
     try {
-        console.log(`Creating working electronic signature field: ${name}`);
+        console.log(`Creating working electronic initials field: ${name}`);
         
         // STEP 1: Clean and validate the field name
         // PDF field names must be alphanumeric with underscores/hyphens only
@@ -671,158 +985,6 @@ async function createWorkingSignatureField(pdfDoc, page, name, rect) {
 }
 
 /**
- * Creates a working electronic initials field using direct PDF manipulation
- * 
- * This function creates Adobe Fill & Sign signature fields specifically optimized for initials that allow users to:
- * - Draw initials using mouse/touch
- * - Upload initials images
- * - Type initials in signature fonts
- * - Use Adobe's built-in signature tools
- * 
- * DIFFERENCES FROM FULL SIGNATURE FIELDS:
- * =====================================
- * 
- * 1. SIZE OPTIMIZATION:
- *    - Smaller minimum dimensions (100x25 points vs 150x40 for signatures)
- *    - Optimized for initials rather than full signatures
- *    - More compact appearance suitable for initial placement
- * 
- * 2. STYLING DIFFERENCES:
- *    - Slightly different border styling (thinner border)
- *    - Different background color (slightly lighter)
- *    - Optimized for initials visibility
- * 
- * 3. BEHAVIOR:
- *    - Same Adobe Fill & Sign functionality as signature fields
- *    - Users can draw, upload, or type initials
- *    - Adobe recognizes it as a signature field (no separate initials field type in PDF spec)
- * 
- * HOW IT WORKS:
- * =============
- * 
- * Uses the same PDF structure as signature fields but with initials-optimized dimensions and styling.
- * Adobe AcroForms doesn't have a separate "initials" field type, so we use signature fields
- * with appropriate sizing and styling to create the initials experience.
- * 
- * @param {PDFDocument} pdfDoc - The PDF document to add the initials field to
- * @param {PDFPage} page - The PDF page where the initials field will be placed
- * @param {string} name - The name of the initials field
- * @param {Object} rect - The rectangle coordinates {llx, lly, urx, ury}
- */
-async function createWorkingInitialsField(pdfDoc, page, name, rect) {
-    try {
-        console.log(`Creating working electronic initials field: ${name}`);
-        
-        // STEP 1: Clean and validate the field name
-        // PDF field names must be alphanumeric with underscores/hyphens only
-        let cleanName = name;
-        if (!cleanName || typeof cleanName !== 'string') {
-            cleanName = `Initials_${Date.now()}`;
-        }
-        cleanName = cleanName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
-        
-        // STEP 2: Calculate field dimensions optimized for initials
-        // Smaller minimum size than signature fields (initials are typically smaller)
-        const width = Math.max(rect.urx - rect.llx, 100);   // Minimum 100 points width (vs 150 for signatures)
-        const height = Math.max(rect.ury - rect.lly, 25);   // Minimum 25 points height (vs 40 for signatures)
-        
-        // STEP 3: Create the initials field dictionary
-        // Same structure as signature fields but with initials-optimized appearance
-        const initialsDict = pdfDoc.context.obj({
-            FT: PDFLib.PDFName.of('Sig'),                    // Field Type: Signature (Adobe uses same type for initials)
-            T: PDFLib.PDFString.of(cleanName),               // Field Name (must be valid PDF name)
-            Ff: PDFLib.PDFNumber.of(0),                      // Field Flags: 0 = Allow electronic signatures/initials
-            Rect: pdfDoc.context.obj([                       // Field Rectangle [left, bottom, right, top]
-                PDFLib.PDFNumber.of(rect.llx),
-                PDFLib.PDFNumber.of(rect.lly),
-                PDFLib.PDFNumber.of(rect.llx + width),
-                PDFLib.PDFNumber.of(rect.lly + height)
-            ]),
-            P: page.ref,                                     // Page Reference (links field to specific page)
-            V: null,                                         // Value (null = unsigned, will be filled when signed)
-            Lock: false,                                     // Not locked (allows signing)
-            F: PDFLib.PDFNumber.of(4),                       // Print flag (field will print)
-            
-            // APPEARANCE CHARACTERISTICS optimized for initials
-            MK: pdfDoc.context.obj({                         // Appearance characteristics
-                BC: pdfDoc.context.obj([0, 0, 0]),           // Border color (black border)
-                BG: pdfDoc.context.obj([0.97, 0.97, 0.97])   // Background color (very light gray - lighter than signatures)
-            }),
-            DA: PDFLib.PDFString.of('/Helv 10 Tf 0 g'),     // Default appearance string (smaller font for initials)
-        });
-        
-        // STEP 4: Register the initials field in the PDF context
-        // This makes the field part of the PDF's internal structure
-        const initialsRef = pdfDoc.context.register(initialsDict);
-        
-        // STEP 5: Integrate with PDF's AcroForm system
-        // AcroForm is PDF's standard form system that Adobe recognizes
-        let acroForm = pdfDoc.catalog.get(PDFLib.PDFName.of('AcroForm'));
-        if (!acroForm) {
-            // Create new AcroForm if document doesn't have one
-            acroForm = pdfDoc.context.obj({
-                Fields: pdfDoc.context.obj([initialsRef]),    // Array of field references
-                NeedAppearances: true                         // Ensure fields render properly
-            });
-            pdfDoc.catalog.set(PDFLib.PDFName.of('AcroForm'), acroForm);
-        } else {
-            // Add to existing AcroForm
-            const fields = acroForm.get(PDFLib.PDFName.of('Fields'));
-            if (fields) {
-                fields.push(initialsRef);                    // Add to existing fields array
-            } else {
-                acroForm.set(PDFLib.PDFName.of('Fields'), pdfDoc.context.obj([initialsRef]));
-            }
-        }
-        
-        // STEP 6: Create widget annotation for user interaction
-        // Widget annotations make fields visible and clickable in PDF viewers
-        const widgetDict = pdfDoc.context.obj({
-            Type: PDFLib.PDFName.of('Annot'),                // Annotation type
-            Subtype: PDFLib.PDFName.of('Widget'),            // Widget subtype (form field widget)
-            FT: PDFLib.PDFName.of('Sig'),                    // Field Type: Signature (same as initials)
-            T: PDFLib.PDFString.of(cleanName),               // Field name (must match field dictionary)
-            Rect: pdfDoc.context.obj([                       // Widget rectangle (same as field)
-                PDFLib.PDFNumber.of(rect.llx),
-                PDFLib.PDFNumber.of(rect.lly),
-                PDFLib.PDFNumber.of(rect.llx + width),
-                PDFLib.PDFNumber.of(rect.lly + height)
-            ]),
-            P: page.ref,                                     // Page reference
-            F: PDFLib.PDFNumber.of(4),                       // Print flag
-            AP: null,                                        // Appearance (null = use default)
-            
-            // Widget appearance characteristics optimized for initials
-            MK: pdfDoc.context.obj({
-                BC: pdfDoc.context.obj([0, 0, 0]),           // Border color (black border)
-                BG: pdfDoc.context.obj([0.97, 0.97, 0.97])   // Background color (very light gray)
-            }),
-            DA: PDFLib.PDFString.of('/Helv 10 Tf 0 g'),     // Default appearance (smaller font)
-            Ff: PDFLib.PDFNumber.of(0),                      // Field flags (allow electronic signatures/initials)
-        });
-        
-        // STEP 7: Register and attach the widget annotation
-        const widgetRef = pdfDoc.context.register(widgetDict);
-        
-        // Add widget to page's annotation array
-        // This makes the field visible and interactive on the page
-        const annots = page.node.get(PDFLib.PDFName.of('Annots'));
-        if (annots) {
-            annots.push(widgetRef);                          // Add to existing annotations
-        } else {
-            page.node.set(PDFLib.PDFName.of('Annots'), pdfDoc.context.obj([widgetRef]));
-        }
-        
-        console.log(`✓ Successfully created working electronic initials field: ${cleanName}`);
-        
-    } catch (error) {
-        console.error(`Failed to create working initials field "${name}":`, error);
-        // Fall back to styled text field if initials field creation fails
-        await createSignatureFieldFallback(pdfDoc, page, name, rect);
-    }
-}
-
-/**
  * Fallback method for creating signature fields when real signature libraries are not available
  * Creates a styled text field that looks like a signature field
  * @param {PDFDocument} pdfDoc - The PDF document
@@ -832,6 +994,7 @@ async function createWorkingInitialsField(pdfDoc, page, name, rect) {
  * @param {Object} options - Styling options
  */
 async function createSignatureFieldFallback(pdfDoc, page, name, rect, options = {}) {
+    console.log(`🔄 FALLBACK: Creating signature field fallback for "${name}"`);
     const form = pdfDoc.getForm();
     
     // Check if field already exists to avoid duplicate name errors
@@ -843,6 +1006,7 @@ async function createSignatureFieldFallback(pdfDoc, page, name, rect, options = 
         }
     } catch (error) {
         // Field doesn't exist, continue with creation
+        console.log(`✅ Field "${name}" doesn't exist, proceeding with creation`);
     }
     
     try {
@@ -1148,6 +1312,14 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
             console.warn('Failed to update field appearances:', error);
         }
         
+        // DEBUG: Log final summary
+        console.log('📊 FINAL CONVERSION SUMMARY:', {
+            totalFieldsProcessed: Object.values(fieldTypeCounts).reduce((a, b) => a + b, 0),
+            fieldTypeCounts: fieldTypeCounts,
+            signatureFields: fieldTypeCounts.signHereTabs + fieldTypeCounts.initialHereTabs + fieldTypeCounts.stampTabs,
+            otherFields: fieldTypeCounts.other
+        });
+        
         // Save the modified PDF
         const finalPdfBytes = await pdfDoc.save();
         return finalPdfBytes;
@@ -1174,3 +1346,6 @@ function base64ToUint8Array(base64) {
 
 // Export the main function for use in the HTML
 window.convertDocuSignToPDF = convertDocuSignToPDF;
+
+// Export the signature field creation function for use by field translators
+window.createSignatureField = createSignatureField;

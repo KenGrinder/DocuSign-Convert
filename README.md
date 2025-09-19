@@ -70,19 +70,53 @@ This project is designed to work with GitHub Pages for free hosting:
 
 ## Supported Features
 
-- **Tab Types**: Text fields, SignHere, InitialHere, DateSigned (currently converts to text fields), Checkbox fields
-- **Coordinates**: DocuSign uses top-left origin with pixel-like units; this tool converts to PDF user space using each page's size
-- **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and other unwanted content
+### Field Types
+- **Text Fields**: Single-line text input with customizable dimensions
+- **Signature Fields**: Adobe Fill & Sign compatible signature fields for full signatures
+- **Initial Fields**: Adobe Fill & Sign compatible signature fields optimized for initials
+- **Checkbox Fields**: Interactive PDF checkboxes with proper AcroForm integration
+- **Radio Button Groups**: Mutual exclusion radio button groups
+- **Dropdown Lists**: Combo box selections with multiple options
+- **Date Fields**: Auto-populated date fields with current date
+- **Auto-populated Fields**: Full name, company, title, email address fields
+- **File Attachment Fields**: Text fields for file attachment information
+
+### Advanced Features
+- **Smart Field Detection**: Intelligent field type determination with priority handling
+- **Coordinate Conversion**: DocuSign top-left origin to PDF bottom-left origin conversion
+- **Header/Footer Masking**: Automatically hide DocuSign envelope IDs and unwanted content
 - **Document Exclusion**: Skip specific documents during conversion
 - **Multi-page Support**: Handle multiple documents and pages seamlessly
-- **Interactive Checkboxes**: Convert DocuSign checkbox tabs to interactive PDF checkbox fields
+- **System Tab Filtering**: Filter out unwanted system-generated fields
+- **Field Type Controls**: Enable/disable specific field types during conversion
+- **Customizable Styling**: Configurable field dimensions and appearance
 
 ## Limitations
 
-- **Field Types**: Currently supports text, signature, and checkbox fields. AcroForm supports additional types (radio buttons, dropdowns, list boxes) that are not yet implemented
 - **Advanced Features**: Conditional logic, formulas, and complex styling are not fully implemented
 - **Client-side Processing**: Large files may take longer to process in the browser
-- **Radio Groups**: DocuSign RadioGroup tabs are converted to text fields (not interactive radio buttons)
+- **Font Styling**: Advanced font customization is limited in client-side PDF generation
+- **File Attachments**: PDF-lib doesn't support native file attachment fields, so these are converted to text fields
+
+## 🏗️ Architecture
+
+### Code Structure
+- **`converter.js`**: Main conversion logic and PDF manipulation
+- **`field-translators.js`**: Field-specific translation system with registry pattern
+- **`index.html`**: User interface and application entry point
+
+### Key Design Patterns
+- **Registry Pattern**: Field translators are registered and dispatched dynamically
+- **Strategy Pattern**: Different field types use different creation strategies
+- **Configuration Object**: Centralized configuration for dimensions, styling, and validation
+- **Error Handling**: Comprehensive error handling with graceful fallbacks
+
+### Best Practices Implemented
+- **Modular Design**: Clear separation of concerns between modules
+- **Input Validation**: Robust validation of input data and field properties
+- **Error Recovery**: Multiple fallback strategies for field creation
+- **Logging**: Detailed debug logging for troubleshooting
+- **Documentation**: Comprehensive JSDoc comments throughout
 
 ## 🛠️ Development
 
@@ -90,8 +124,9 @@ This is a pure static web application. To modify:
 
 1. **Edit the web interface**: Modify `index.html`
 2. **Update conversion logic**: Edit `js/converter.js`
-3. **Test locally**: Open `index.html` in your browser
-4. **Deploy**: Push changes to GitHub (automatic deployment)
+3. **Add new field types**: Extend `field-translators.js` with new translators
+4. **Test locally**: Open `index.html` in your browser
+5. **Deploy**: Push changes to GitHub (automatic deployment)
 
 ## ⚖️ Legal Disclaimer
 
