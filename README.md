@@ -91,6 +91,12 @@ This is a pure static web application. To modify:
 3. **Test locally**: Open `index.html` in your browser
 4. **Deploy**: Push changes to GitHub (automatic deployment)
 
+## ⚖️ Legal Disclaimer
+
+This tool is not affiliated with, endorsed by, or sponsored by DocuSign or Adobe. 
+It processes user-exported JSON data to create standard PDF files. 
+Users are responsible for ensuring they have the right to convert their documents.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
