@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://kengrinder.github.io/DocuSign-Convert/sitemap.xml
+
+# Crawl-delay (optional - adjust based on your server capacity)
+Crawl-delay: 1
