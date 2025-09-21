@@ -260,6 +260,32 @@
         ]
     }
     </script>
+    
+    <!-- Google Analytics 4 (GA4) Tracking Code -->
+    <!-- This implementation adds Google Analytics tracking to monitor traffic and user interactions -->
+    <!-- Measurement ID: G-TG51PDC72K - Configured for kengrinder.github.io domain -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TG51PDC72K"></script>
+    <script>
+        // Initialize Google Analytics with the provided measurement ID
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        
+        // Configure GA4 with your measurement ID and domain settings
+        gtag('config', 'G-TG51PDC72K', {
+            // Set the domain for proper cross-subdomain tracking on GitHub Pages
+            'custom_map': {'custom_parameter_1': 'github_pages_domain'},
+            // Enhanced measurement settings for better tracking
+            'send_page_view': true,
+            // Configure for GitHub Pages hosting
+            'anonymize_ip': true,
+            // Set up proper referrer tracking
+            'referrer': document.referrer
+        });
+        
+        // Make gtag function globally available for custom event tracking
+        window.gtag = gtag;
+    </script>
 </head>
 <body>
     <!-- Hero Section -->
@@ -607,6 +633,15 @@
         stylingToggle.addEventListener('click', () => {
             const isExpanded = stylingToggle.getAttribute('aria-expanded') === 'true';
             stylingToggleIcon.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+            
+            // Track user interaction with advanced options
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'advanced_options_toggle', {
+                    'event_category': 'user_interaction',
+                    'event_label': isExpanded ? 'collapse' : 'expand',
+                    'custom_parameter_1': 'github_pages_domain'
+                });
+            }
         });
 
         function showFileInfo(file) {
@@ -641,7 +676,26 @@
             const file = fileInput.files[0];
             if (!file) {
                 showAlert('Please select a JSON file', 'danger');
+                // Track failed conversion attempt
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'conversion_error', {
+                        'event_category': 'file_upload',
+                        'event_label': 'no_file_selected',
+                        'custom_parameter_1': 'github_pages_domain'
+                    });
+                }
                 return;
+            }
+
+            // Track file upload start
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'file_upload_start', {
+                    'event_category': 'file_upload',
+                    'event_label': file.name,
+                    'file_size': file.size,
+                    'file_type': file.type,
+                    'custom_parameter_1': 'github_pages_domain'
+                });
             }
 
             convertBtn.style.display = 'none';
@@ -670,6 +724,18 @@
 
                 const pdfBytes = await convertDocuSignToPDF(jsonData, options);
                 
+                // Track successful conversion
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'conversion_complete', {
+                        'event_category': 'file_conversion',
+                        'event_label': 'docusign_to_pdf',
+                        'file_name': file.name,
+                        'file_size': file.size,
+                        'pdf_size': pdfBytes.length,
+                        'custom_parameter_1': 'github_pages_domain'
+                    });
+                }
+                
                 // Download the PDF
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 const url = URL.createObjectURL(blob);
@@ -684,6 +750,16 @@
                 showAlert('PDF converted successfully! Download started.', 'success');
                 
             } catch (error) {
+                // Track conversion error
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'conversion_error', {
+                        'event_category': 'file_conversion',
+                        'event_label': 'conversion_failed',
+                        'error_message': error.message,
+                        'file_name': file ? file.name : 'unknown',
+                        'custom_parameter_1': 'github_pages_domain'
+                    });
+                }
                 showAlert(`Conversion failed: ${error.message}`, 'danger');
             } finally {
                 convertBtn.style.display = 'inline-block';
