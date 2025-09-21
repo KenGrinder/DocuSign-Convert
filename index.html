@@ -262,13 +262,6 @@
     }
     </script>
     
-    <!-- Cookie Consent Banner -->
-    <div id="cookie-consent" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #333; color: white; padding: 15px; text-align: center; z-index: 1000;">
-        <p style="margin: 0 0 10px 0;">This site uses cookies for analytics to improve your experience. Your data is processed anonymously and securely.</p>
-        <button onclick="acceptCookies()" style="background: #667eea; color: white; border: none; padding: 8px 16px; margin: 0 5px; border-radius: 4px; cursor: pointer;">Accept</button>
-        <button onclick="declineCookies()" style="background: #666; color: white; border: none; padding: 8px 16px; margin: 0 5px; border-radius: 4px; cursor: pointer;">Decline</button>
-    </div>
-
     <!-- Google Analytics 4 (GA4) Enhanced Tracking Code -->
     <!-- This implementation adds comprehensive Google Analytics tracking to monitor traffic, user interactions, and conversion metrics -->
     <!-- Measurement ID: G-TG51PDC72K - Configured for kengrinder.github.io domain -->
@@ -279,34 +272,8 @@
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         
-        // Cookie consent management
-        function showCookieConsent() {
-            const consent = localStorage.getItem('cookie-consent');
-            if (!consent) {
-                document.getElementById('cookie-consent').style.display = 'block';
-            } else if (consent === 'accepted') {
-                initializeAnalytics();
-            }
-        }
-        
-        function acceptCookies() {
-            localStorage.setItem('cookie-consent', 'accepted');
-            document.getElementById('cookie-consent').style.display = 'none';
-            initializeAnalytics();
-        }
-        
-        function declineCookies() {
-            localStorage.setItem('cookie-consent', 'declined');
-            document.getElementById('cookie-consent').style.display = 'none';
-        }
-        
-        function initializeAnalytics() {
-            // Only initialize if consent is given
-            const consent = localStorage.getItem('cookie-consent');
-            if (consent !== 'accepted') return;
-            
-            // Enhanced GA4 configuration with privacy-first settings and comprehensive tracking
-            gtag('config', 'G-TG51PDC72K', {
+        // Enhanced GA4 configuration with comprehensive tracking and performance optimization
+        gtag('config', 'G-TG51PDC72K', {
             // Core tracking settings
             'send_page_view': true,
             'anonymize_ip': true,
@@ -318,34 +285,46 @@
                 'form_interactions': true,
                 'scrolls': true,
                 'outbound_clicks': true,
-                'site_search': true
+                'site_search': true,
+                'video_engagement': false, // Disable if not needed for performance
+                'page_changes': false // Disable for SPA-like behavior
             },
             
             // Privacy and compliance settings
-            'allow_google_signals': false, // Disable for enhanced privacy
-            'allow_ad_personalization_signals': false, // Disable for enhanced privacy
-            'restricted_data_processing': true, // Enable for GDPR compliance
-            'cookie_flags': 'SameSite=None;Secure', // Enhanced cookie security
+            'allow_google_signals': false, // Disable cross-device tracking for privacy
+            'allow_ad_personalization_signals': false, // Disable ad personalization for privacy
+            'restricted_data_processing': false, // Keep disabled for conversion tracking
+            'cookie_flags': 'SameSite=Lax;Secure', // Better security for same-site usage
             
-            // Custom parameters for better segmentation and analysis
+            // Performance optimization settings
+            'transport_type': 'beacon', // Use beacon for better performance on page unload
+            'send_page_view_on_load': false, // Control when page views are sent
             'custom_map': {
-                'custom_parameter_1': 'conversion_tool',
-                'custom_parameter_2': 'file_type',
-                'custom_parameter_3': 'user_agent'
-            }
-            });
-        }
+                'conversion_tool': 'conversion_tool',
+                'file_type': 'file_type',
+                'user_agent': 'user_agent'
+            },
+            
+            // Debug settings (remove in production)
+            'debug_mode': false, // Set to true for debugging
+            
+            // Custom dimensions for better data organization
+            'custom_parameter_conversion_tool': 'docusign_converter',
+            'custom_parameter_page_type': 'converter_tool'
+        });
         
         // Enhanced event tracking functions for consistent and comprehensive analytics
         function trackConversionEvent(eventName, parameters = {}) {
             if (typeof gtag !== 'undefined') {
                 gtag('event', eventName, {
-                    'event_category': 'conversion',
-                    'event_label': parameters.label || 'docusign_converter',
+                    // GA4 recommended parameters (replaces Universal Analytics event_category/event_label)
+                    'event_category': 'conversion', // Keep for backward compatibility
+                    'event_label': parameters.label || 'docusign_converter', // Keep for backward compatibility
+                    'conversion_tool': 'docusign_converter',
+                    'file_type': parameters.fileType || 'json',
+                    'user_agent': navigator.userAgent.substring(0, 100),
                     'value': parameters.value || 0,
-                    'custom_parameter_1': 'docusign_converter',
-                    'custom_parameter_2': parameters.fileType || 'json',
-                    'custom_parameter_3': navigator.userAgent.substring(0, 100),
+                    'currency': parameters.currency || 'USD',
                     ...parameters
                 });
             }
@@ -354,9 +333,11 @@
         function trackUserInteraction(eventName, parameters = {}) {
             if (typeof gtag !== 'undefined') {
                 gtag('event', eventName, {
-                    'event_category': 'user_interaction',
-                    'event_label': parameters.label || 'interface',
-                    'custom_parameter_1': 'docusign_converter',
+                    // GA4 recommended parameters
+                    'event_category': 'user_interaction', // Keep for backward compatibility
+                    'event_label': parameters.label || 'interface', // Keep for backward compatibility
+                    'conversion_tool': 'docusign_converter',
+                    'interaction_type': parameters.interaction_type || 'click',
                     ...parameters
                 });
             }
@@ -365,32 +346,133 @@
         function trackPerformance(eventName, parameters = {}) {
             if (typeof gtag !== 'undefined') {
                 gtag('event', eventName, {
-                    'event_category': 'performance',
-                    'event_label': parameters.label || 'conversion',
-                    'custom_parameter_1': 'docusign_converter',
+                    // GA4 recommended parameters for performance tracking
+                    'event_category': 'performance', // Keep for backward compatibility
+                    'event_label': parameters.label || 'conversion', // Keep for backward compatibility
+                    'conversion_tool': 'docusign_converter',
+                    'metric_type': parameters.metric_type || 'timing',
+                    'value': parameters.value || 0,
                     ...parameters
                 });
             }
         }
         
-        // Track page load performance
+        // Track page load performance with enhanced metrics using modern APIs
         window.addEventListener('load', function() {
+            // Use modern Performance Observer API when available, fallback to legacy API
+            let loadTime, domContentLoadedTime, firstContentfulPaint, largestContentfulPaint;
+            
+            // Modern Performance API (preferred)
+            if (performance.getEntriesByType) {
+                const navigationEntries = performance.getEntriesByType('navigation');
+                if (navigationEntries.length > 0) {
+                    const nav = navigationEntries[0];
+                    loadTime = nav.loadEventEnd - nav.fetchStart;
+                    domContentLoadedTime = nav.domContentLoadedEventEnd - nav.fetchStart;
+                }
+                
+                // First Contentful Paint
+                const fcpEntries = performance.getEntriesByName('first-contentful-paint');
+                if (fcpEntries.length > 0) {
+                    firstContentfulPaint = fcpEntries[0].startTime;
+                }
+                
+                // Largest Contentful Paint
+                const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
+                if (lcpEntries.length > 0) {
+                    largestContentfulPaint = lcpEntries[lcpEntries.length - 1].startTime;
+                }
+            } else {
+                // Legacy Performance Timing API fallback
+                loadTime = performance.timing ? 
+                    performance.timing.loadEventEnd - performance.timing.navigationStart : 
+                    performance.now();
+                
+                domContentLoadedTime = performance.timing ? 
+                    performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart : 
+                    null;
+            }
+            
             trackPerformance('page_load_complete', {
-                'load_time': performance.now(),
-                'conversion_tool': 'docusign_converter'
+                'metric_type': 'page_load',
+                'load_time_ms': Math.round(loadTime || 0),
+                'dom_content_loaded_ms': domContentLoadedTime ? Math.round(domContentLoadedTime) : null,
+                'first_contentful_paint_ms': firstContentfulPaint ? Math.round(firstContentfulPaint) : null,
+                'largest_contentful_paint_ms': largestContentfulPaint ? Math.round(largestContentfulPaint) : null,
+                'conversion_tool': 'docusign_converter',
+                'page_type': 'converter_tool'
             });
         });
         
+        // Core Web Vitals tracking for modern performance metrics
+        function trackCoreWebVitals() {
+            // Track Largest Contentful Paint (LCP)
+            if ('PerformanceObserver' in window) {
+                const lcpObserver = new PerformanceObserver((list) => {
+                    const entries = list.getEntries();
+                    const lastEntry = entries[entries.length - 1];
+                    trackPerformance('largest_contentful_paint', {
+                        'metric_type': 'core_web_vital',
+                        'value': Math.round(lastEntry.startTime),
+                        'conversion_tool': 'docusign_converter'
+                    });
+                });
+                lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
+            }
+
+            // Track First Input Delay (FID) - requires user interaction
+            if ('PerformanceObserver' in window) {
+                const fidObserver = new PerformanceObserver((list) => {
+                    const entries = list.getEntries();
+                    entries.forEach((entry) => {
+                        trackPerformance('first_input_delay', {
+                            'metric_type': 'core_web_vital',
+                            'value': Math.round(entry.processingStart - entry.startTime),
+                            'conversion_tool': 'docusign_converter'
+                        });
+                    });
+                });
+                fidObserver.observe({ entryTypes: ['first-input'] });
+            }
+
+            // Track Cumulative Layout Shift (CLS)
+            if ('PerformanceObserver' in window) {
+                let clsValue = 0;
+                const clsObserver = new PerformanceObserver((list) => {
+                    const entries = list.getEntries();
+                    entries.forEach((entry) => {
+                        if (!entry.hadRecentInput) {
+                            clsValue += entry.value;
+                        }
+                    });
+                    
+                    // Report CLS when page is about to be unloaded with small delay for accuracy
+                    if (document.visibilityState === 'hidden') {
+                        setTimeout(() => {
+                            trackPerformance('cumulative_layout_shift', {
+                                'metric_type': 'core_web_vital',
+                                'value': Math.round(clsValue * 1000), // Convert to integer for GA4
+                                'conversion_tool': 'docusign_converter'
+                            });
+                        }, 100); // Small delay to ensure complete data collection
+                    }
+                });
+                clsObserver.observe({ entryTypes: ['layout-shift'] });
+            }
+        }
+
+        // Initialize Core Web Vitals tracking when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', trackCoreWebVitals);
+        } else {
+            trackCoreWebVitals();
+        }
+
         // Make functions globally available for custom event tracking
         window.gtag = gtag;
         window.trackConversionEvent = trackConversionEvent;
         window.trackUserInteraction = trackUserInteraction;
         window.trackPerformance = trackPerformance;
-        
-        // Show cookie consent on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            showCookieConsent();
-        });
     </script>
 </head>
 <body>
@@ -697,7 +779,7 @@
             uploadArea.classList.add('dragover');
             
             // Track drag over interaction
-            trackUserInteraction('file_drag_over', {
+            trackUserInteraction('file_drag_initiated', {
                 'interaction_type': 'drag_drop',
                 'conversion_tool': 'docusign_converter'
             });
@@ -716,7 +798,7 @@
                 showFileInfo(files[0]);
                 
                 // Track successful file drop
-                trackUserInteraction('file_drop_success', {
+                trackUserInteraction('file_drop_completed', {
                     'interaction_type': 'drag_drop',
                     'file_count': files.length,
                     'conversion_tool': 'docusign_converter'
@@ -754,7 +836,7 @@
             stylingToggleIcon.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
             
             // Track user interaction with advanced options using enhanced tracking
-            trackUserInteraction('advanced_options_toggle', {
+            trackUserInteraction('ui_panel_toggle', {
                 'action': isExpanded ? 'collapse' : 'expand',
                 'section': 'styling_options',
                 'github_pages_domain': 'true'
@@ -808,9 +890,11 @@
             const fileSizeCategory = file.size < 100000 ? 'small' : 
                                    file.size < 1000000 ? 'medium' : 'large';
             
-            trackConversionEvent('file_upload', {
+            trackConversionEvent('conversion_initiated', {
                 'file_type': file.type || 'application/json',
                 'file_size_category': fileSizeCategory,
+                'file_size_bytes': file.size,
+                'file_name': file.name,
                 'github_pages_domain': 'true',
                 'conversion_tool': 'docusign_converter'
             });
@@ -853,6 +937,7 @@
                 const outputFileSizeCategory = pdfBytes.length < 100000 ? 'small' : 
                                              pdfBytes.length < 1000000 ? 'medium' : 'large';
                 
+                // Track successful conversion with enhanced parameters
                 trackConversionEvent('conversion_complete', {
                     'file_name': file.name.replace('.json', '_converted.pdf'),
                     'file_type': 'application/pdf',
@@ -862,7 +947,17 @@
                     'github_pages_domain': 'true',
                     'conversion_tool': 'docusign_converter',
                     'value': 1, // Assign value for conversion tracking
-                    'currency': 'USD'
+                    'currency': 'USD',
+                    'success': true,
+                    'processing_time_ms': conversionTime
+                });
+                
+                // Track download event separately for better funnel analysis
+                trackConversionEvent('file_download_initiated', {
+                    'file_name': file.name.replace('.json', '_converted.pdf'),
+                    'file_type': 'application/pdf',
+                    'file_size_bytes': pdfBytes.length,
+                    'conversion_tool': 'docusign_converter'
                 });
                 
                 // Track conversion performance metrics
@@ -895,7 +990,9 @@
                     'error_type': 'conversion_error',
                     'file_type': 'application/json',
                     'github_pages_domain': 'true',
-                    'conversion_tool': 'docusign_converter'
+                    'conversion_tool': 'docusign_converter',
+                    'error_category': error.name || 'UnknownError',
+                    'processing_time_ms': Date.now() - conversionStartTime
                 });
                 
                 // Track conversion performance for failed attempts
@@ -925,7 +1022,7 @@
                 section.style.display = isVisible ? 'block' : 'none';
                 
                 // Track field type controls visibility changes
-                trackUserInteraction('field_type_controls_toggle', {
+                trackUserInteraction('advanced_controls_toggle', {
                     'action': isVisible ? 'show' : 'hide',
                     'section': 'advanced_field_controls',
                     'conversion_tool': 'docusign_converter'
@@ -1006,14 +1103,14 @@
                         updateFieldStatusDisplay();
                     }
                     
-                    // Track field type configuration changes
-                    trackUserInteraction('field_type_toggle', {
-                        'field_type': fieldType,
-                        'enabled': enabled,
-                        'total_enabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => cb.checked).length,
-                        'total_disabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => !cb.checked).length,
-                        'conversion_tool': 'docusign_converter'
-                    });
+                // Track field type configuration changes
+                trackUserInteraction('field_type_configuration_changed', {
+                    'field_type': fieldType,
+                    'enabled': enabled,
+                    'total_enabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => cb.checked).length,
+                    'total_disabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => !cb.checked).length,
+                    'conversion_tool': 'docusign_converter'
+                });
                     
                 });
             });
@@ -1029,7 +1126,7 @@
                 updateFieldStatusDisplay();
                 
                 // Track bulk field type changes
-                trackUserInteraction('field_type_bulk_change', {
+                trackUserInteraction('field_type_bulk_configuration', {
                     'action': 'enable_all',
                     'total_fields': document.querySelectorAll('.field-type-toggle').length,
                     'conversion_tool': 'docusign_converter'
@@ -1046,7 +1143,7 @@
                 updateFieldStatusDisplay();
                 
                 // Track bulk field type changes
-                trackUserInteraction('field_type_bulk_change', {
+                trackUserInteraction('field_type_bulk_configuration', {
                     'action': 'disable_all',
                     'total_fields': document.querySelectorAll('.field-type-toggle').length,
                     'conversion_tool': 'docusign_converter'
