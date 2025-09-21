@@ -261,8 +261,8 @@
     }
     </script>
     
-    <!-- Google Analytics 4 (GA4) Tracking Code -->
-    <!-- This implementation adds Google Analytics tracking to monitor traffic and user interactions -->
+    <!-- Google Analytics 4 (GA4) Enhanced Tracking Code -->
+    <!-- This implementation adds comprehensive Google Analytics tracking to monitor traffic, user interactions, and conversion metrics -->
     <!-- Measurement ID: G-TG51PDC72K - Configured for kengrinder.github.io domain -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TG51PDC72K"></script>
     <script>
@@ -271,20 +271,86 @@
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         
-        // Configure GA4 with your measurement ID and domain settings
+        // Enhanced GA4 configuration with privacy-first settings and comprehensive tracking
         gtag('config', 'G-TG51PDC72K', {
-            // Set the domain for proper cross-subdomain tracking on GitHub Pages
-            'custom_map': {'custom_parameter_1': 'github_pages_domain'},
-            // Enhanced measurement settings for better tracking
+            // Core tracking settings
             'send_page_view': true,
-            // Configure for GitHub Pages hosting
             'anonymize_ip': true,
-            // Set up proper referrer tracking
-            'referrer': document.referrer
+            'referrer': document.referrer,
+            
+            // Enhanced measurement settings for automatic event tracking
+            'enhanced_measurement': {
+                'file_downloads': true,
+                'form_interactions': true,
+                'scrolls': true,
+                'outbound_clicks': true,
+                'site_search': true
+            },
+            
+            // Privacy and compliance settings
+            'allow_google_signals': false, // Disable for enhanced privacy
+            'allow_ad_personalization_signals': false, // Disable for enhanced privacy
+            'restricted_data_processing': true, // Enable for GDPR compliance
+            'cookie_flags': 'SameSite=None;Secure', // Enhanced cookie security
+            
+            // Custom parameters for better segmentation and analysis
+            'custom_map': {
+                'custom_parameter_1': 'conversion_tool',
+                'custom_parameter_2': 'file_type',
+                'custom_parameter_3': 'user_agent'
+            }
         });
         
-        // Make gtag function globally available for custom event tracking
+        // Enhanced event tracking functions for consistent and comprehensive analytics
+        function trackConversionEvent(eventName, parameters = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, {
+                    'event_category': 'conversion',
+                    'event_label': parameters.label || 'docusign_converter',
+                    'value': parameters.value || 0,
+                    'custom_parameter_1': 'docusign_converter',
+                    'custom_parameter_2': parameters.fileType || 'json',
+                    'custom_parameter_3': navigator.userAgent.substring(0, 100),
+                    ...parameters
+                });
+            }
+        }
+        
+        function trackUserInteraction(eventName, parameters = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, {
+                    'event_category': 'user_interaction',
+                    'event_label': parameters.label || 'interface',
+                    'custom_parameter_1': 'docusign_converter',
+                    ...parameters
+                });
+            }
+        }
+        
+        function trackPerformance(eventName, parameters = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, {
+                    'event_category': 'performance',
+                    'event_label': parameters.label || 'conversion',
+                    'custom_parameter_1': 'docusign_converter',
+                    ...parameters
+                });
+            }
+        }
+        
+        // Track page load performance
+        window.addEventListener('load', function() {
+            trackPerformance('page_load_complete', {
+                'load_time': performance.now(),
+                'conversion_tool': 'docusign_converter'
+            });
+        });
+        
+        // Make functions globally available for custom event tracking
         window.gtag = gtag;
+        window.trackConversionEvent = trackConversionEvent;
+        window.trackUserInteraction = trackUserInteraction;
+        window.trackPerformance = trackPerformance;
     </script>
 </head>
 <body>
@@ -585,10 +651,16 @@
         const loading = document.querySelector('.loading');
         const alertContainer = document.getElementById('alertContainer');
 
-        // Drag and drop functionality
+        // Drag and drop functionality with enhanced tracking
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
+            
+            // Track drag over interaction
+            trackUserInteraction('file_drag_over', {
+                'interaction_type': 'drag_drop',
+                'conversion_tool': 'docusign_converter'
+            });
         });
 
         uploadArea.addEventListener('dragleave', () => {
@@ -602,6 +674,13 @@
             if (files.length > 0) {
                 fileInput.files = files;
                 showFileInfo(files[0]);
+                
+                // Track successful file drop
+                trackUserInteraction('file_drop_success', {
+                    'interaction_type': 'drag_drop',
+                    'file_count': files.length,
+                    'conversion_tool': 'docusign_converter'
+                });
             }
         });
 
@@ -634,14 +713,12 @@
             const isExpanded = stylingToggle.getAttribute('aria-expanded') === 'true';
             stylingToggleIcon.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
             
-            // Track user interaction with advanced options
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'advanced_options_toggle', {
-                    'event_category': 'user_interaction',
-                    'event_label': isExpanded ? 'collapse' : 'expand',
-                    'custom_parameter_1': 'github_pages_domain'
-                });
-            }
+            // Track user interaction with advanced options using enhanced tracking
+            trackUserInteraction('advanced_options_toggle', {
+                'action': isExpanded ? 'collapse' : 'expand',
+                'section': 'styling_options',
+                'github_pages_domain': 'true'
+            });
         });
 
         function showFileInfo(file) {
@@ -676,33 +753,36 @@
             const file = fileInput.files[0];
             if (!file) {
                 showAlert('Please select a JSON file', 'danger');
-                // Track failed conversion attempt
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'conversion_error', {
-                        'event_category': 'file_upload',
-                        'event_label': 'no_file_selected',
-                        'custom_parameter_1': 'github_pages_domain'
-                    });
-                }
+                // Track failed conversion attempt using enhanced error tracking
+                gtag('event', 'exception', {
+                    'description': 'no_file_selected',
+                    'fatal': false,
+                    'error_type': 'validation_error',
+                    'conversion_tool': 'docusign_converter',
+                    'github_pages_domain': 'true'
+                });
                 return;
             }
 
-            // Track file upload start
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'file_upload_start', {
-                    'event_category': 'file_upload',
-                    'event_label': file.name,
-                    'file_size': file.size,
-                    'file_type': file.type,
-                    'custom_parameter_1': 'github_pages_domain'
-                });
-            }
+            // Track file upload start using enhanced conversion tracking
+            const fileSizeCategory = file.size < 100000 ? 'small' : 
+                                   file.size < 1000000 ? 'medium' : 'large';
+            
+            trackConversionEvent('file_upload', {
+                'file_type': file.type || 'application/json',
+                'file_size_category': fileSizeCategory,
+                'github_pages_domain': 'true',
+                'conversion_tool': 'docusign_converter'
+            });
 
             convertBtn.style.display = 'none';
             loading.style.display = 'block';
             alertContainer.innerHTML = '';
 
             try {
+                // Track conversion start time for performance monitoring
+                const conversionStartTime = Date.now();
+                
                 const text = await file.text();
                 const jsonData = JSON.parse(text);
                 
@@ -724,17 +804,34 @@
 
                 const pdfBytes = await convertDocuSignToPDF(jsonData, options);
                 
-                // Track successful conversion
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'conversion_complete', {
-                        'event_category': 'file_conversion',
-                        'event_label': 'docusign_to_pdf',
-                        'file_name': file.name,
-                        'file_size': file.size,
-                        'pdf_size': pdfBytes.length,
-                        'custom_parameter_1': 'github_pages_domain'
-                    });
-                }
+                // Calculate conversion performance metrics
+                const conversionTime = Date.now() - conversionStartTime;
+                
+                // Track successful conversion using enhanced conversion tracking
+                const inputFileSizeCategory = file.size < 100000 ? 'small' : 
+                                            file.size < 1000000 ? 'medium' : 'large';
+                const outputFileSizeCategory = pdfBytes.length < 100000 ? 'small' : 
+                                             pdfBytes.length < 1000000 ? 'medium' : 'large';
+                
+                trackConversionEvent('conversion_complete', {
+                    'file_name': file.name.replace('.json', '_converted.pdf'),
+                    'file_type': 'application/pdf',
+                    'file_size_category': outputFileSizeCategory,
+                    'conversion_type': 'docusign_to_pdf',
+                    'input_file_size_category': inputFileSizeCategory,
+                    'github_pages_domain': 'true',
+                    'conversion_tool': 'docusign_converter',
+                    'value': 1, // Assign value for conversion tracking
+                    'currency': 'USD'
+                });
+                
+                // Track conversion performance metrics
+                trackPerformance('conversion_performance', {
+                    'processing_time_ms': conversionTime,
+                    'file_size_category': fileSizeCategory,
+                    'success': true,
+                    'conversion_tool': 'docusign_converter'
+                });
                 
                 // Download the PDF
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -750,16 +847,25 @@
                 showAlert('PDF converted successfully! Download started.', 'success');
                 
             } catch (error) {
-                // Track conversion error
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'conversion_error', {
-                        'event_category': 'file_conversion',
-                        'event_label': 'conversion_failed',
-                        'error_message': error.message,
-                        'file_name': file ? file.name : 'unknown',
-                        'custom_parameter_1': 'github_pages_domain'
-                    });
-                }
+                // Track conversion error using enhanced error tracking
+                gtag('event', 'exception', {
+                    'description': 'conversion_failed',
+                    'fatal': false,
+                    'error_message': error.message.substring(0, 100), // Limit length to avoid high cardinality
+                    'error_type': 'conversion_error',
+                    'file_type': 'application/json',
+                    'github_pages_domain': 'true',
+                    'conversion_tool': 'docusign_converter'
+                });
+                
+                // Track conversion performance for failed attempts
+                trackPerformance('conversion_performance', {
+                    'processing_time_ms': Date.now() - conversionStartTime,
+                    'file_size_category': fileSizeCategory,
+                    'success': false,
+                    'error_type': 'conversion_error',
+                    'conversion_tool': 'docusign_converter'
+                });
                 showAlert(`Conversion failed: ${error.message}`, 'danger');
             } finally {
                 convertBtn.style.display = 'inline-block';
@@ -772,10 +878,18 @@
             // Initialize field type controls
             initializeFieldTypeControls();
             
-            // Set up field type controls toggle
+            // Set up field type controls toggle with enhanced tracking
             document.getElementById('show_field_type_controls').addEventListener('change', function() {
                 const section = document.getElementById('field-type-controls-section');
-                section.style.display = this.checked ? 'block' : 'none';
+                const isVisible = this.checked;
+                section.style.display = isVisible ? 'block' : 'none';
+                
+                // Track field type controls visibility changes
+                trackUserInteraction('field_type_controls_toggle', {
+                    'action': isVisible ? 'show' : 'hide',
+                    'section': 'advanced_field_controls',
+                    'conversion_tool': 'docusign_converter'
+                });
             });
             
             // Show the controls by default if checked
@@ -852,6 +966,15 @@
                         updateFieldStatusDisplay();
                     }
                     
+                    // Track field type configuration changes
+                    trackUserInteraction('field_type_toggle', {
+                        'field_type': fieldType,
+                        'enabled': enabled,
+                        'total_enabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => cb.checked).length,
+                        'total_disabled': Array.from(document.querySelectorAll('.field-type-toggle')).filter(cb => !cb.checked).length,
+                        'conversion_tool': 'docusign_converter'
+                    });
+                    
                 });
             });
             
@@ -864,6 +987,13 @@
                     }
                 });
                 updateFieldStatusDisplay();
+                
+                // Track bulk field type changes
+                trackUserInteraction('field_type_bulk_change', {
+                    'action': 'enable_all',
+                    'total_fields': document.querySelectorAll('.field-type-toggle').length,
+                    'conversion_tool': 'docusign_converter'
+                });
             });
             
             document.getElementById('disableAllFields').addEventListener('click', function() {
@@ -874,6 +1004,13 @@
                     }
                 });
                 updateFieldStatusDisplay();
+                
+                // Track bulk field type changes
+                trackUserInteraction('field_type_bulk_change', {
+                    'action': 'disable_all',
+                    'total_fields': document.querySelectorAll('.field-type-toggle').length,
+                    'conversion_tool': 'docusign_converter'
+                });
             });
             
             // Initialize status display
