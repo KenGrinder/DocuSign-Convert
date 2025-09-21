@@ -29,6 +29,7 @@
     
     <!-- Additional SEO Meta Tags -->
     <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="DocuSign Converter">
@@ -261,6 +262,13 @@
     }
     </script>
     
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-consent" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #333; color: white; padding: 15px; text-align: center; z-index: 1000;">
+        <p style="margin: 0 0 10px 0;">This site uses cookies for analytics to improve your experience. Your data is processed anonymously and securely.</p>
+        <button onclick="acceptCookies()" style="background: #667eea; color: white; border: none; padding: 8px 16px; margin: 0 5px; border-radius: 4px; cursor: pointer;">Accept</button>
+        <button onclick="declineCookies()" style="background: #666; color: white; border: none; padding: 8px 16px; margin: 0 5px; border-radius: 4px; cursor: pointer;">Decline</button>
+    </div>
+
     <!-- Google Analytics 4 (GA4) Enhanced Tracking Code -->
     <!-- This implementation adds comprehensive Google Analytics tracking to monitor traffic, user interactions, and conversion metrics -->
     <!-- Measurement ID: G-TG51PDC72K - Configured for kengrinder.github.io domain -->
@@ -271,8 +279,34 @@
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         
-        // Enhanced GA4 configuration with privacy-first settings and comprehensive tracking
-        gtag('config', 'G-TG51PDC72K', {
+        // Cookie consent management
+        function showCookieConsent() {
+            const consent = localStorage.getItem('cookie-consent');
+            if (!consent) {
+                document.getElementById('cookie-consent').style.display = 'block';
+            } else if (consent === 'accepted') {
+                initializeAnalytics();
+            }
+        }
+        
+        function acceptCookies() {
+            localStorage.setItem('cookie-consent', 'accepted');
+            document.getElementById('cookie-consent').style.display = 'none';
+            initializeAnalytics();
+        }
+        
+        function declineCookies() {
+            localStorage.setItem('cookie-consent', 'declined');
+            document.getElementById('cookie-consent').style.display = 'none';
+        }
+        
+        function initializeAnalytics() {
+            // Only initialize if consent is given
+            const consent = localStorage.getItem('cookie-consent');
+            if (consent !== 'accepted') return;
+            
+            // Enhanced GA4 configuration with privacy-first settings and comprehensive tracking
+            gtag('config', 'G-TG51PDC72K', {
             // Core tracking settings
             'send_page_view': true,
             'anonymize_ip': true,
@@ -299,7 +333,8 @@
                 'custom_parameter_2': 'file_type',
                 'custom_parameter_3': 'user_agent'
             }
-        });
+            });
+        }
         
         // Enhanced event tracking functions for consistent and comprehensive analytics
         function trackConversionEvent(eventName, parameters = {}) {
@@ -351,6 +386,11 @@
         window.trackConversionEvent = trackConversionEvent;
         window.trackUserInteraction = trackUserInteraction;
         window.trackPerformance = trackPerformance;
+        
+        // Show cookie consent on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            showCookieConsent();
+        });
     </script>
 </head>
 <body>
