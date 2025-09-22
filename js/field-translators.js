@@ -838,6 +838,23 @@ async function translateSignerAttachmentField(fieldData, pdfDoc, page, coords, o
 // ============================================================================
 
 /**
+ * Sanitize field name to prevent XSS and other attacks
+ * @param {string} name - The field name to sanitize
+ * @returns {string} - Sanitized field name
+ */
+function sanitizeFieldName(name) {
+    if (!name || typeof name !== 'string') {
+        return 'field_' + Date.now();
+    }
+    
+    // Remove potentially dangerous characters and limit length
+    return name
+        .replace(/[<>\"'&]/g, '') // Remove HTML/XML special characters
+        .replace(/[^\w\-_]/g, '_') // Replace non-alphanumeric chars with underscore
+        .substring(0, 40); // Limit length
+}
+
+/**
  * Generate a valid PDF field name from DocuSign field data
  * 
  * @param {Object} fieldData - DocuSign field data
@@ -846,8 +863,8 @@ async function translateSignerAttachmentField(fieldData, pdfDoc, page, coords, o
 function generateFieldName(fieldData) {
     let name = fieldData.name || fieldData.tabLabel || `Field_${Date.now()}`;
     
-    // Clean the name for PDF compatibility
-    name = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    // Sanitize the name first
+    name = sanitizeFieldName(name);
     
     // Ensure uniqueness by adding timestamp and random string
     const timestamp = Date.now();

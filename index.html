@@ -54,10 +54,10 @@
     
     <!-- Fallback favicon using SVG data URI -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23667eea'/><rect x='8' y='6' width='12' height='16' rx='1' fill='white'/><line x1='10' y1='9' x2='18' y2='9' stroke='%23667eea' stroke-width='0.8'/><line x1='10' y1='11' x2='16' y2='11' stroke='%23667eea' stroke-width='0.6'/><line x1='10' y1='13' x2='17' y2='13' stroke='%23667eea' stroke-width='0.6'/><path d='M20 14 L24 16 L20 18' stroke='white' stroke-width='1.5' fill='none'/><rect x='22' y='8' width='6' height='8' rx='0.5' fill='%23e74c3c'/><text x='25' y='13' font-family='Arial' font-size='4' font-weight='bold' fill='white' text-anchor='middle'>PDF</text></svg>">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" integrity="sha384-4LISF5TTJXyLdknCQplcUlakxUFyVZcEcaRP6fZq6g5f5a6O5wqW/0o4dq6/OLF" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js" integrity="sha512-8q31cVukfXgX3p1EC45v8xE3BwzHtA1t4I1E8Xyx7c9T4rF0o8w6qqSf9Ba2L5cW3Xw0XlPz7Fy4Z0uwd2kQ==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznJQsIqXV0X0n8X0JUzAzI8sLJX1Hm7uyIRt4+22u0Uft7aXpFcXEmlalG46HXLgHk1kMw==" crossorigin="anonymous"></script>
     <!-- Load signature libraries for real signature field support -->
     <script type="module" id="signature-libs">
         // Import signature libraries for real signature field functionality
@@ -69,7 +69,7 @@
         window.pdflibAddPlaceholder = pdflibAddPlaceholder;
         
     </script>
-    <style>
+    <style nonce="style-nonce">
         .hero-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -131,7 +131,7 @@
     </style>
     
     <!-- Structured Data (JSON-LD) for SEO -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="script-nonce">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
@@ -176,7 +176,7 @@
     </script>
     
     <!-- FAQ Structured Data -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="script-nonce">
     {
         "@context": "https://schema.org",
         "@type": "FAQPage",
@@ -226,7 +226,7 @@
     </script>
     
     <!-- Organization Structured Data -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="script-nonce">
     {
         "@context": "https://schema.org",
         "@type": "Organization",
@@ -241,7 +241,7 @@
     </script>
     
     <!-- Breadcrumb Structured Data -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="script-nonce">
     {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
@@ -266,7 +266,7 @@
     <!-- This implementation adds comprehensive Google Analytics tracking to monitor traffic, user interactions, and conversion metrics -->
     <!-- Measurement ID: G-TG51PDC72K - Configured for kengrinder.github.io domain -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TG51PDC72K"></script>
-    <script>
+    <script nonce="script-nonce">
         // Initialize Google Analytics with the provided measurement ID
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
@@ -757,10 +757,10 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
     <script src="js/converter.js"></script>
     <script src="js/field-translators.js"></script>
-    <script>
+    <script nonce="script-nonce">
         // File upload handling
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -907,8 +907,35 @@
                 // Track conversion start time for performance monitoring
                 const conversionStartTime = Date.now();
                 
+                // Validate file type and size before processing
+                if (file.type && file.type !== 'application/json' && !file.name.toLowerCase().endsWith('.json')) {
+                    throw new Error('Invalid file type: Please upload a JSON file');
+                }
+                
+                // Check file size (limit to 10MB)
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                if (file.size > maxSize) {
+                    throw new Error('File too large: Please upload a file smaller than 10MB');
+                }
+                
                 const text = await file.text();
-                const jsonData = JSON.parse(text);
+                
+                // Validate JSON structure before parsing
+                if (!text || text.trim().length === 0) {
+                    throw new Error('Empty file: Please upload a valid JSON file');
+                }
+                
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(text);
+                } catch (parseError) {
+                    throw new Error('Invalid JSON format: Please upload a valid JSON file');
+                }
+                
+                // Additional validation for DocuSign JSON structure
+                if (!jsonData || typeof jsonData !== 'object') {
+                    throw new Error('Invalid JSON structure: Expected an object');
+                }
                 
                 const options = {
                     maskHeaderHeight: parseFloat(document.getElementById('mask_header_height').value) || 0,
@@ -982,11 +1009,10 @@
                 showAlert('PDF converted successfully! Download started.', 'success');
                 
             } catch (error) {
-                // Track conversion error using enhanced error tracking
+                // Track conversion error using enhanced error tracking (without sensitive details)
                 gtag('event', 'exception', {
                     'description': 'conversion_failed',
                     'fatal': false,
-                    'error_message': error.message.substring(0, 100), // Limit length to avoid high cardinality
                     'error_type': 'conversion_error',
                     'file_type': 'application/json',
                     'github_pages_domain': 'true',
@@ -1003,7 +1029,20 @@
                     'error_type': 'conversion_error',
                     'conversion_tool': 'docusign_converter'
                 });
-                showAlert(`Conversion failed: ${error.message}`, 'danger');
+                
+                // Show user-friendly error message without exposing internal details
+                let userMessage = 'Conversion failed. Please check your file and try again.';
+                if (error.message.includes('Invalid file type')) {
+                    userMessage = 'Please upload a valid JSON file.';
+                } else if (error.message.includes('File too large')) {
+                    userMessage = 'File is too large. Please upload a file smaller than 10MB.';
+                } else if (error.message.includes('Invalid JSON')) {
+                    userMessage = 'Invalid JSON format. Please check your file.';
+                } else if (error.message.includes('No documents found')) {
+                    userMessage = 'No valid documents found in the JSON file.';
+                }
+                
+                showAlert(userMessage, 'danger');
             } finally {
                 convertBtn.style.display = 'inline-block';
                 loading.style.display = 'none';

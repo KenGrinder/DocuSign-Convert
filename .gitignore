@@ -52,6 +52,11 @@ _decoded_docs/
 .env.local
 .env.production
 
+# Google Analytics API keys and credentials
+Google/
+*.json
+!ga4-*.json
+
 # Test files
 test_sample.json
 test_*.py

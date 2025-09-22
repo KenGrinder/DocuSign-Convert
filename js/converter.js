@@ -140,6 +140,64 @@ function updateFieldTypeCount(fieldType, counters) {
 }
 
 /**
+ * Validate and sanitize DocuSign JSON data to prevent security vulnerabilities
+ * @param {Object} templateData - The parsed DocuSign template JSON
+ * @returns {boolean} - Validation result
+ */
+function validateDocuSignJSON(templateData) {
+    // Check for basic structure
+    if (!templateData || typeof templateData !== 'object') {
+        throw new Error('Invalid template data: Expected an object');
+    }
+    
+    // Check for prototype pollution attacks
+    if (templateData.__proto__ || templateData.constructor === Object.prototype.constructor) {
+        throw new Error('Invalid object structure: Potential prototype pollution detected');
+    }
+    
+    // Validate documents array
+    if (!templateData.documents || !Array.isArray(templateData.documents)) {
+        throw new Error('Invalid template data: Missing or invalid documents array');
+    }
+    
+    // Validate each document
+    for (const doc of templateData.documents) {
+        if (!doc || typeof doc !== 'object') {
+            throw new Error('Invalid document: Expected an object');
+        }
+        
+        // Validate document ID
+        if (doc.documentId && typeof doc.documentId !== 'string' && typeof doc.documentId !== 'number') {
+            throw new Error('Invalid document ID: Must be string or number');
+        }
+        
+        // Validate base64 data
+        if (doc.documentBase64 && typeof doc.documentBase64 !== 'string') {
+            throw new Error('Invalid document data: Base64 must be string');
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Sanitize field name to prevent XSS and other attacks
+ * @param {string} name - The field name to sanitize
+ * @returns {string} - Sanitized field name
+ */
+function sanitizeFieldName(name) {
+    if (!name || typeof name !== 'string') {
+        return 'field_' + Date.now();
+    }
+    
+    // Remove potentially dangerous characters and limit length
+    return name
+        .replace(/[<>\"'&]/g, '') // Remove HTML/XML special characters
+        .replace(/[^\w\-_]/g, '_') // Replace non-alphanumeric chars with underscore
+        .substring(0, 40); // Limit length
+}
+
+/**
  * Main conversion function that takes DocuSign JSON data and converts it to a PDF
  * @param {Object} templateData - The parsed DocuSign template JSON
  * @param {Object} options - Conversion options
@@ -147,14 +205,8 @@ function updateFieldTypeCount(fieldType, counters) {
  */
 async function convertDocuSignToPDF(templateData, options = {}) {
     try {
-        // Input validation
-        if (!templateData || typeof templateData !== 'object') {
-            throw new Error('Invalid template data: Expected an object');
-        }
-        
-        if (!templateData.documents || !Array.isArray(templateData.documents)) {
-            throw new Error('Invalid template data: Missing or invalid documents array');
-        }
+        // Input validation and sanitization
+        validateDocuSignJSON(templateData);
         
         // Starting DocuSign to PDF conversion
         
@@ -336,7 +388,13 @@ async function convertDocuSignToPDF(templateData, options = {}) {
         return await mergedPdf.save();
         
     } catch (error) {
-        throw new Error(`PDF conversion failed: ${error.message}`);
+        // Log error details for debugging (in development only)
+        if (typeof console !== 'undefined' && console.error) {
+            console.error('PDF conversion error:', error);
+        }
+        
+        // Return generic error message to prevent information disclosure
+        throw new Error('PDF conversion failed. Please check your file and try again.');
     }
 }
 
@@ -441,10 +499,12 @@ function getTabRectangle(tab, pageSize, options = {}) {
  */
 function getTabName(tab, index) {
     const label = tab.tabLabel || tab.name || tab.documentId || 'Field';
+    // Sanitize the label first
+    const sanitizedLabel = sanitizeFieldName(label);
     // Generate a more unique name to avoid conflicts
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 5);
-    return `${label}_${index}_${timestamp}_${random}`;
+    return `${sanitizedLabel}_${index}_${timestamp}_${random}`;
 }
 
 
@@ -1121,17 +1181,50 @@ async function addRealSignatureFieldsPostProcessing(pdfBytes, signatureFields) {
 }
 
 /**
- * Convert base64 string to Uint8Array
+ * Validate base64 string format
+ * @param {string} base64 - The base64 string to validate
+ * @returns {boolean} - Validation result
+ */
+function validateBase64(base64) {
+    if (!base64 || typeof base64 !== 'string') {
+        return false;
+    }
+    
+    // Check for valid base64 characters only
+    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Regex.test(base64)) {
+        return false;
+    }
+    
+    // Check length is multiple of 4
+    if (base64.length % 4 !== 0) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Convert base64 string to Uint8Array with validation
  * @param {string} base64 - The base64 string
  * @returns {Uint8Array} - The decoded bytes
  */
 function base64ToUint8Array(base64) {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+    // Validate base64 format first
+    if (!validateBase64(base64)) {
+        throw new Error('Invalid base64 format');
     }
-    return bytes;
+    
+    try {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    } catch (error) {
+        throw new Error('Failed to decode base64 data');
+    }
 }
 
 // Export the main function for use in the HTML
