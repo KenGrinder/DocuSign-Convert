@@ -903,10 +903,10 @@
             loading.style.display = 'block';
             alertContainer.innerHTML = '';
 
+            // Track conversion start time for performance monitoring
+            const conversionStartTime = Date.now();
+            
             try {
-                // Track conversion start time for performance monitoring
-                const conversionStartTime = Date.now();
-                
                 // Validate file type and size before processing
                 if (file.type && file.type !== 'application/json' && !file.name.toLowerCase().endsWith('.json')) {
                     throw new Error('Invalid file type: Please upload a JSON file');
