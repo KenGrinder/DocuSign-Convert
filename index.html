@@ -141,6 +141,65 @@
         .alert {
             border-radius: 10px;
         }
+        
+        /* Privacy-First Analytics Consent Banner Styles */
+        .privacy-consent-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1050;
+            border-top: 3px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .privacy-consent-banner .privacy-content h6 {
+            color: white;
+            font-weight: 600;
+        }
+        
+        .privacy-consent-banner .privacy-content p {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.4;
+        }
+        
+        .privacy-consent-banner .btn {
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .privacy-consent-banner .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .privacy-consent-banner .btn-outline-light:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Add bottom padding to body when banner is visible */
+        body.privacy-banner-visible {
+            padding-bottom: 120px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 991.98px) {
+            .privacy-consent-banner .col-lg-4 {
+                text-align: center !important;
+                margin-top: 1rem;
+            }
+            
+            .privacy-consent-banner .privacy-buttons {
+                display: flex;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+        }
     </style>
     
     <!-- Structured Data (JSON-LD) for SEO -->
@@ -285,79 +344,102 @@
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         
-        // Enhanced GA4 configuration with comprehensive tracking and performance optimization
+        // Privacy-First GA4 configuration - minimal data collection for process improvement
         gtag('config', 'G-TG51PDC72K', {
-            // Core tracking settings
-            'send_page_view': true,
-            'anonymize_ip': true,
+            // Core tracking settings - privacy optimized
+            'send_page_view': false, // Disabled by default, only sent with consent
+            'anonymize_ip': true, // Always anonymize IP addresses
             'referrer': document.referrer,
             
-            // Enhanced measurement settings for automatic event tracking
+            // Minimal enhanced measurement - only essential interactions
             'enhanced_measurement': {
-                'file_downloads': true,
-                'form_interactions': true,
-                'scrolls': true,
-                'outbound_clicks': true,
-                'site_search': true,
-                'video_engagement': false, // Disable if not needed for performance
-                'page_changes': false // Disable for SPA-like behavior
+                'file_downloads': false, // Disabled - we track this manually without file names
+                'form_interactions': false, // Disabled - we track this manually without personal data
+                'scrolls': false, // Disabled for privacy
+                'outbound_clicks': false, // Disabled for privacy
+                'site_search': false, // Disabled for privacy
+                'video_engagement': false, // Not applicable
+                'page_changes': false // Not applicable
             },
             
-            // Privacy and compliance settings
+            // Maximum privacy and compliance settings
             'allow_google_signals': false, // Disable cross-device tracking for privacy
             'allow_ad_personalization_signals': false, // Disable ad personalization for privacy
-            'restricted_data_processing': false, // Keep disabled for conversion tracking
+            'restricted_data_processing': true, // Enable restricted data processing for privacy
             'cookie_flags': 'SameSite=Lax;Secure', // Better security for same-site usage
             
             // Performance optimization settings
             'transport_type': 'beacon', // Use beacon for better performance on page unload
             'send_page_view_on_load': false, // Control when page views are sent
+            
+            // Removed custom_map with user_agent for privacy
             'custom_map': {
                 'conversion_tool': 'conversion_tool',
-                'file_type': 'file_type',
-                'user_agent': 'user_agent'
+                'file_type': 'file_type'
+                // Removed user_agent mapping for privacy
             },
             
             // Debug settings (remove in production)
             'debug_mode': false, // Set to true for debugging
             
-            // Custom dimensions for better data organization
+            // Custom dimensions for better data organization - privacy focused
             'custom_parameter_conversion_tool': 'docusign_converter',
             'custom_parameter_page_type': 'converter_tool'
         });
         
-        // Enhanced event tracking functions for consistent and comprehensive analytics
+        // Set default consent to denied for privacy-first approach
+        gtag('consent', 'default', {
+            'analytics_storage': 'denied',
+            'ad_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied'
+        });
+        
+        // Privacy-focused event tracking functions - no personal data collected
         function trackConversionEvent(eventName, parameters = {}) {
-            if (typeof gtag !== 'undefined') {
+            // Only track if user has consented to analytics
+            if (typeof gtag !== 'undefined' && window.analyticsConsent === true) {
                 gtag('event', eventName, {
                     // GA4 recommended parameters (replaces Universal Analytics event_category/event_label)
                     'event_category': 'conversion', // Keep for backward compatibility
                     'event_label': parameters.label || 'docusign_converter', // Keep for backward compatibility
                     'conversion_tool': 'docusign_converter',
                     'file_type': parameters.fileType || 'json',
-                    'user_agent': navigator.userAgent.substring(0, 100),
+                    // Removed user_agent for privacy - no personal identification
                     'value': parameters.value || 0,
                     'currency': parameters.currency || 'USD',
-                    ...parameters
+                    // Filter out any sensitive parameters
+                    ...Object.fromEntries(
+                        Object.entries(parameters).filter(([key]) => 
+                            !['file_name', 'fileName', 'user_agent', 'file_size_bytes'].includes(key)
+                        )
+                    )
                 });
             }
         }
         
         function trackUserInteraction(eventName, parameters = {}) {
-            if (typeof gtag !== 'undefined') {
+            // Only track if user has consented to analytics
+            if (typeof gtag !== 'undefined' && window.analyticsConsent === true) {
                 gtag('event', eventName, {
                     // GA4 recommended parameters
                     'event_category': 'user_interaction', // Keep for backward compatibility
                     'event_label': parameters.label || 'interface', // Keep for backward compatibility
                     'conversion_tool': 'docusign_converter',
                     'interaction_type': parameters.interaction_type || 'click',
-                    ...parameters
+                    // Filter out any sensitive parameters
+                    ...Object.fromEntries(
+                        Object.entries(parameters).filter(([key]) => 
+                            !['file_name', 'fileName', 'user_agent', 'file_size_bytes'].includes(key)
+                        )
+                    )
                 });
             }
         }
         
         function trackPerformance(eventName, parameters = {}) {
-            if (typeof gtag !== 'undefined') {
+            // Only track if user has consented to analytics
+            if (typeof gtag !== 'undefined' && window.analyticsConsent === true) {
                 gtag('event', eventName, {
                     // GA4 recommended parameters for performance tracking
                     'event_category': 'performance', // Keep for backward compatibility
@@ -365,7 +447,12 @@
                     'conversion_tool': 'docusign_converter',
                     'metric_type': parameters.metric_type || 'timing',
                     'value': parameters.value || 0,
-                    ...parameters
+                    // Filter out any sensitive parameters
+                    ...Object.fromEntries(
+                        Object.entries(parameters).filter(([key]) => 
+                            !['file_name', 'fileName', 'user_agent', 'file_size_bytes'].includes(key)
+                        )
+                    )
                 });
             }
         }
@@ -481,6 +568,85 @@
             trackCoreWebVitals();
         }
 
+        // Privacy-First Analytics Consent Management
+        window.analyticsConsent = false; // Default to no consent
+        
+        // Check for existing consent preference
+        function checkAnalyticsConsent() {
+            const consent = localStorage.getItem('analytics-consent');
+            if (consent === 'accepted') {
+                window.analyticsConsent = true;
+                // Initialize GA4 with consent
+                gtag('consent', 'update', {
+                    'analytics_storage': 'granted'
+                });
+            } else if (consent === 'declined') {
+                window.analyticsConsent = false;
+                // Disable GA4
+                gtag('consent', 'update', {
+                    'analytics_storage': 'denied'
+                });
+            } else {
+                // Show consent banner for first-time visitors
+                showConsentBanner();
+            }
+        }
+        
+        // Show the privacy consent banner
+        function showConsentBanner() {
+            const banner = document.getElementById('privacy-consent-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                document.body.classList.add('privacy-banner-visible');
+                
+                // Add event listeners for consent buttons
+                document.getElementById('accept-analytics').addEventListener('click', acceptAnalytics);
+                document.getElementById('decline-analytics').addEventListener('click', declineAnalytics);
+            }
+        }
+        
+        // Handle analytics acceptance
+        function acceptAnalytics() {
+            window.analyticsConsent = true;
+            localStorage.setItem('analytics-consent', 'accepted');
+            hideConsentBanner();
+            
+            // Grant consent to GA4
+            gtag('consent', 'update', {
+                'analytics_storage': 'granted'
+            });
+            
+            // Track consent acceptance (this will work now that consent is granted)
+            trackUserInteraction('privacy_consent_accepted', {
+                'consent_type': 'analytics',
+                'conversion_tool': 'docusign_converter'
+            });
+        }
+        
+        // Handle analytics decline
+        function declineAnalytics() {
+            window.analyticsConsent = false;
+            localStorage.setItem('analytics-consent', 'declined');
+            hideConsentBanner();
+            
+            // Deny consent to GA4
+            gtag('consent', 'update', {
+                'analytics_storage': 'denied'
+            });
+        }
+        
+        // Hide the consent banner
+        function hideConsentBanner() {
+            const banner = document.getElementById('privacy-consent-banner');
+            if (banner) {
+                banner.style.display = 'none';
+                document.body.classList.remove('privacy-banner-visible');
+            }
+        }
+        
+        // Initialize consent check when DOM is ready
+        document.addEventListener('DOMContentLoaded', checkAnalyticsConsent);
+        
         // Make functions globally available for custom event tracking
         window.gtag = gtag;
         window.trackConversionEvent = trackConversionEvent;
@@ -503,9 +669,10 @@
                         Automatically converts DocuSign template fields to Adobe PDF fields including digital signatures, date fields, text fields, and checkboxes.
                         <strong>Free, secure, and completely private</strong> - no file uploads required.
                     </p>
-                    <div class="alert alert-info d-inline-block">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Note:</strong> This is a client-side converter. Your files are processed locally and never uploaded to any server.
+                    <div class="alert alert-success d-inline-block">
+                        <i class="bi bi-shield-check me-2"></i>
+                        <strong>Privacy-First:</strong> All processing happens in your browser. Your files never leave your device. 
+                        Anonymous usage data collected only with your consent for process improvement.
                     </div>
                 </div>
             </div>
@@ -760,12 +927,18 @@
                     <i class="bi bi-github me-1"></i>View on GitHub
                 </a>
             </p>
-            <p class="mb-0 small text-light">
+            <p class="mb-2 small text-light">
                 <i class="bi bi-shield-exclamation me-1"></i>
                 <strong>Legal Disclaimer:</strong> This tool is not affiliated with, endorsed by, or sponsored by DocuSign or Adobe. 
                 DocuSign and Adobe are trademarks of their respective owners. 
                 This tool processes user-exported JSON data to create standard PDF files. 
                 Users are responsible for ensuring they have the right to convert their documents.
+            </p>
+            <p class="mb-0 small text-light">
+                <i class="bi bi-shield-check me-1"></i>
+                <strong>Privacy-First:</strong> We collect anonymous usage data only with your consent for process improvement. 
+                <strong>No personal information, file names, or file contents are collected.</strong> 
+                All processing happens in your browser - your files never leave your device.
             </p>
         </div>
     </footer>
@@ -773,6 +946,37 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/converter.js"></script>
     <script src="js/field-translators.js"></script>
+    
+    <!-- Privacy-First Analytics Consent Banner -->
+    <div id="privacy-consent-banner" class="privacy-consent-banner" style="display: none;">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="privacy-content">
+                        <h6 class="mb-2">
+                            <i class="bi bi-shield-check me-2"></i>
+                            Privacy-First Analytics
+                        </h6>
+                        <p class="mb-0 small">
+                            We collect <strong>anonymous usage data</strong> to improve our tool. 
+                            <strong>No personal information</strong> or file names are collected. 
+                            Data is used solely for process improvement and performance optimization.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="privacy-buttons">
+                        <button type="button" class="btn btn-outline-light btn-sm me-2" id="decline-analytics">
+                            <i class="bi bi-x-circle me-1"></i>Decline
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm" id="accept-analytics">
+                            <i class="bi bi-check-circle me-1"></i>Accept
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script nonce="script-nonce">
         // File upload handling
         const uploadArea = document.getElementById('uploadArea');
@@ -906,8 +1110,7 @@
             trackConversionEvent('conversion_initiated', {
                 'file_type': file.type || 'application/json',
                 'file_size_category': fileSizeCategory,
-                'file_size_bytes': file.size,
-                'file_name': file.name,
+                // Removed file_name and file_size_bytes for privacy
                 'github_pages_domain': 'true',
                 'conversion_tool': 'docusign_converter'
             });
@@ -977,9 +1180,9 @@
                 const outputFileSizeCategory = pdfBytes.length < 100000 ? 'small' : 
                                              pdfBytes.length < 1000000 ? 'medium' : 'large';
                 
-                // Track successful conversion with enhanced parameters
+                // Track successful conversion with privacy-focused parameters
                 trackConversionEvent('conversion_complete', {
-                    'file_name': file.name.replace('.json', '_converted.pdf'),
+                    // Removed file_name for privacy
                     'file_type': 'application/pdf',
                     'file_size_category': outputFileSizeCategory,
                     'conversion_type': 'docusign_to_pdf',
@@ -994,9 +1197,8 @@
                 
                 // Track download event separately for better funnel analysis
                 trackConversionEvent('file_download_initiated', {
-                    'file_name': file.name.replace('.json', '_converted.pdf'),
+                    // Removed file_name and file_size_bytes for privacy
                     'file_type': 'application/pdf',
-                    'file_size_bytes': pdfBytes.length,
                     'conversion_tool': 'docusign_converter'
                 });
                 
